@@ -8,7 +8,7 @@ import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import type { Word } from '@/model/types';
 import { validateListName } from '@/model/validation';
-import { useVocabulary, vocabularyStore } from '@/store';
+import { sessionStore, useVocabulary, vocabularyStore } from '@/store';
 import { plural } from '@/utils/format';
 
 export default function ListScreen() {
@@ -62,6 +62,11 @@ export default function ListScreen() {
       { text: 'Cancel', style: 'cancel' },
     ]);
 
+  const practice = () => {
+    sessionStore.getState().startSession({ listId: list.id, shuffle: true });
+    router.push('/session/play');
+  };
+
   const openWord = (wordId?: string) =>
     router.push({ pathname: '/word', params: wordId ? { listId: list.id, wordId } : { listId: list.id } });
 
@@ -87,6 +92,7 @@ export default function ListScreen() {
       />
       <Footer>
         <Button title="Add words" icon="add" variant="secondary" onPress={() => openWord()} style={styles.flex} />
+        <Button title="Practice" icon="play" onPress={practice} disabled={words.length === 0} style={styles.flex} />
       </Footer>
       <TextPromptModal
         visible={renaming}

@@ -1,4 +1,4 @@
-import type { Answer, NewWordInput, VocabularyData, Word, WordList, WordPatch } from './types';
+import type { Answer, NewWordInput, ReviewState, VocabularyData, Word, WordList, WordPatch } from './types';
 
 /**
  * Pure operations on the vocabulary. They never mutate their input and take the id / time
@@ -85,6 +85,11 @@ export function recordAnswer(data: VocabularyData, wordId: string, answer: Answe
     dirty: true,
     updatedAt: now,
   }));
+}
+
+/** Puts back the review values a word had before an answer (undo). */
+export function restoreReview(data: VocabularyData, wordId: string, previous: ReviewState, now: string): VocabularyData {
+  return updateWordById(data, wordId, (w) => ({ ...w, ...previous, dirty: true, updatedAt: now }));
 }
 
 /** Finds a word in the same list with the same front or back (case-insensitive). */

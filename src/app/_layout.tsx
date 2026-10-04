@@ -4,31 +4,33 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { useVocabulary, vocabularyStore } from '@/store';
+import { flushAll, loadAll, useSession, useVocabulary } from '@/store';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const status = useVocabulary((s) => s.status);
+  const vocabularyStatus = useVocabulary((s) => s.status);
+  const sessionStatus = useSession((s) => s.status);
+  const loaded = vocabularyStatus === 'error' || (vocabularyStatus === 'ready' && sessionStatus === 'ready');
 
   useEffect(() => {
-    vocabularyStore.getState().load();
+    loadAll();
 
     // Don't lose pending changes when the app is backgrounded (and possibly killed).
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') {
-        vocabularyStore.getState().flush();
+        flushAll();
       }
     });
     return () => sub.remove();
   }, []);
 
   useEffect(() => {
-    if (status === 'ready' || status === 'error') {
+    if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [status]);
+  }, [loaded]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -37,6 +39,8 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ title: 'MyVocabulary' }} />
           <Stack.Screen name="lists/[id]" options={{ title: '' }} />
           <Stack.Screen name="word" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="session/play" options={{ title: '' }} />
+          <Stack.Screen name="session/summary" options={{ title: 'Results', headerBackVisible: false }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

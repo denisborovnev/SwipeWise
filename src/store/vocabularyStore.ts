@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { createDemoVocabulary } from '@/model/demo';
-import type { Answer, NewWordInput, VocabularyData, WordPatch } from '@/model/types';
+import type { Answer, NewWordInput, ReviewState, VocabularyData, WordPatch } from '@/model/types';
 import * as voc from '@/model/vocabulary';
 import { createDebouncedTask } from '@/storage/debounce';
 import type { Repository } from '@/storage/repository';
@@ -25,6 +25,7 @@ export interface VocabularyState {
   updateWord(wordId: string, patch: WordPatch): void;
   deleteWord(wordId: string): void;
   recordAnswer(wordId: string, answer: Answer): void;
+  restoreReview(wordId: string, previous: ReviewState): void;
 }
 
 export interface VocabularyStoreDeps {
@@ -92,6 +93,7 @@ export function createVocabularyStore({
       updateWord: (wordId, patch) => change((d) => voc.updateWord(d, wordId, patch, now())),
       deleteWord: (wordId) => change((d) => voc.deleteWord(d, wordId)),
       recordAnswer: (wordId, answer) => change((d) => voc.recordAnswer(d, wordId, answer, now())),
+      restoreReview: (wordId, previous) => change((d) => voc.restoreReview(d, wordId, previous, now())),
     };
   });
 }

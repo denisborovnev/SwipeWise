@@ -5,10 +5,11 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Footer } from '@/components/Footer';
+import { SessionCard } from '@/components/SessionCard';
 import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { validateListName } from '@/model/validation';
-import { useVocabulary, vocabularyStore } from '@/store';
+import { useSession, useVocabulary, vocabularyStore } from '@/store';
 import { plural } from '@/utils/format';
 
 export default function HomeScreen() {
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   const status = useVocabulary((s) => s.status);
   const error = useVocabulary((s) => s.error);
   const data = useVocabulary((s) => s.data);
+  const session = useSession((s) => s.session);
   const [creating, setCreating] = useState(false);
 
   const lists = useMemo(() => {
@@ -59,7 +61,8 @@ export default function HomeScreen() {
         keyExtractor={(l) => l.id}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Word lists</Text>
+            {session && <SessionCard session={session} />}
+            <Text style={[styles.sectionTitle, styles.listsTitle, { color: colors.text }]}>Word lists</Text>
             <Text style={{ color: colors.textSecondary }}>
               {plural(data.lists.length, 'list')} · {plural(data.words.length, 'word')}
             </Text>
@@ -99,8 +102,9 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   content: { padding: Spacing.md, gap: Spacing.sm },
-  header: { marginBottom: Spacing.sm, gap: Spacing.xs },
+  header: { marginBottom: Spacing.sm, gap: Spacing.sm },
   sectionTitle: { fontSize: 20, fontWeight: '700' },
+  listsTitle: { marginTop: Spacing.sm },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

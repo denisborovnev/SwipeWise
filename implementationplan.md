@@ -129,15 +129,20 @@ src/
 - [x] "Quick add" mode: after adding, the form clears and stays open for the next word.
 - [x] Validation: front and back required; warning with "Add anyway" for a duplicate front or back in the same list; list names follow the Sheets tab-name rules (unique, no leading `_`, no `:  / ? * [ ]`, max 100 chars).
 
-### Milestone 3 – Flashcard game
-- [ ] `FlashCard` component:
+### Milestone 3 – Flashcard game ✅
+- [x] `FlashCard` component:
   - tap → 3D flip (rotateY) front ↔ back;
-  - pan gesture enabled **only when back is visible**;
-  - swipe past threshold → card flies off, callback `onAnswer('yes' | 'no')`;
-  - below threshold → spring back; card tints green/red while dragging.
-- [ ] Play screen: progress (`12 / 40`), next card, "undo last answer" button.
-- [ ] On answer: update `lastRevisedAt = now`, `remembered`, mark `dirty`, advance `currentIndex`, persist session.
-- [ ] Summary screen: remembered vs. not remembered, "repeat the ones I missed" button.
+  - pan gesture enabled **only when back is visible** (a drag on the front side does nothing);
+  - swipe past threshold (or a fast flick) → card flies off, callback `onAnswer('yes' | 'no')`;
+  - below threshold → spring back; card tints green/red with a "Knew it" / "Didn't know" label while dragging;
+  - "Knew it" / "Didn't know" buttons under the card do the same as swiping.
+- [x] Play screen: progress (`2 / 5` + bar), undo last answer, restart (with confirmation).
+- [x] On answer: word gets `lastRevisedAt = now`, `remembered`, `dirty`; session advances and is saved (debounced 300 ms + on background). Undo restores the word's previous values.
+- [x] Summary screen: knew / didn't know, list of missed words, "Repeat the N words I missed", "Restart session", "Done".
+- [x] Home screen session card: **Continue** (from the card where you stopped) / **Restart**; after finishing: **Restart session**.
+- [x] List screen: **Practice** button (whole list, shuffled).
+- [x] Words deleted after the session was created are skipped.
+- [x] Session logic in pure functions (`model/session.ts`) + `sessionStore`; filtering (`model/filter.ts`) already implemented here, the filter UI comes in Milestone 4.
 
 ### Milestone 4 – Session filters & continuity
 - [ ] New-session screen with `FilterForm`: list picker (single list or All), Added since (always available), Last revised (not revised since date / never), Don't remember toggle (last answer was "no"), shuffle toggle.

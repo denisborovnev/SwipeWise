@@ -46,24 +46,44 @@ export interface VocabularyData {
   words: Word[];
 }
 
+/**
+ * A date bound for filters. Relative bounds ("last 7 days") are stored as such, so a remembered
+ * filter still means "last 7 days" next week. `days: 0` = since the start of today.
+ */
+export type DateFilter = { days: number } | { date: string };
+
 export interface SessionFilter {
   listId: string | 'all';
-  /** ISO date; applies to a single list or to all lists. */
-  addedSince?: string;
-  /** ISO date; also matches never-revised words. */
-  notRevisedSince?: string;
+  /** Words added on or after this day; applies to a single list or to all lists. */
+  addedSince?: DateFilter;
+  /** Words not revised since this day (never-revised words always match). */
+  notRevisedSince?: DateFilter;
   /** Only words whose last answer was "no". */
   onlyNotRemembered?: boolean;
   shuffle: boolean;
 }
 
+/** The review values of a word before it was answered, so the answer can be undone. */
+export interface ReviewState {
+  lastRevisedAt: string | null;
+  remembered: RememberStatus;
+}
+
+export interface SessionStep {
+  wordId: string;
+  answer: Answer;
+  previous: ReviewState;
+}
+
 export interface Session {
   id: string;
   filter: SessionFilter;
-  /** Frozen when the session is created. */
+  /** Frozen when the session is created; only "New session" picks a new set of words. */
   wordIds: string[];
+  /** Index into wordIds of the card being shown; === wordIds.length when finished. */
   currentIndex: number;
-  results: Record<string, Answer>;
+  /** Answers in order, used for results and undo. */
+  history: SessionStep[];
   startedAt: string;
   finishedAt?: string;
 }

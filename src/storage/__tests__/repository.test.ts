@@ -34,7 +34,7 @@ describe('repository', () => {
       filter: { listId: 'all', shuffle: false },
       wordIds: [],
       currentIndex: 0,
-      results: {},
+      history: [],
       startedAt: 'x',
     });
     expect(backend.files[FILES.session]).toBeDefined();
