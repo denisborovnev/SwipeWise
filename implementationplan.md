@@ -144,14 +144,13 @@ src/
 - [x] Words deleted after the session was created are skipped.
 - [x] Session logic in pure functions (`model/session.ts`) + `sessionStore`; filtering (`model/filter.ts`) already implemented here, the filter UI comes in Milestone 4.
 
-### Milestone 4 – Session filters & continuity
-- [ ] New-session screen with `FilterForm`: list picker (single list or All), Added since (always available), Last revised (not revised since date / never), Don't remember toggle (last answer was "no"), shuffle toggle.
-- [ ] Pure function `selectWords(words, filter): string[]` + unit tests.
-- [ ] Live count preview ("37 words match").
-- [ ] Remember last filter as default for the next new session.
-- [ ] Home screen: if an unfinished session exists, the primary action is **Continue** (resume at `currentIndex`, where the user stopped). A **Restart session** button resets `currentIndex` to 0 and clears `results`, keeping the same word ids. The word set is never recomputed unless **New session** is chosen.
-- [ ] Restart is also available from the play screen menu and the summary screen.
-- [ ] Handle words deleted since the session was created (skip missing ids).
+### Milestone 4 – Session filters & continuity ✅
+- [x] New-session screen: word list (All words or one list), Added (any time / today / last 7 / last 30 days / picked date – available for a single list too), Last revised (any time / not today / not in 3 days / a week / a month / not since a picked date; never-revised words always match), "Only words I didn't remember" (last answer = no), Shuffle.
+- [x] Live count on the Start button ("Start · 12 words" / "No words match").
+- [x] The last filter is remembered (`settings.json`) and preselected next time; relative choices ("last 7 days") stay relative.
+- [x] Home screen: **Continue** (resume at `currentIndex`), **Restart** (same word ids from the first card), **New session**. The word set is only recomputed by **New session**.
+- [x] Words deleted since the session was created are skipped.
+- [x] Session card describes the filter, e.g. "Demo · added since Oct 2, 2026 · don't remember".
 
 > ✅ After Milestone 4 the app is fully usable offline.
 

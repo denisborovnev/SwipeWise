@@ -120,6 +120,9 @@ next push.
 
 See [implementationplan.md](implementationplan.md) for the implementation plan.
 
+**Status:** the offline app is complete (milestones 1–4: word lists, flashcards, session filters and
+continuity). Google Sheets sync (milestones 5–6) is next.
+
 ---
 
 ## Development

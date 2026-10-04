@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import { SessionCard } from '@/components/SessionCard';
 import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
+import { isFinished } from '@/model/session';
 import { validateListName } from '@/model/validation';
 import { useSession, useVocabulary, vocabularyStore } from '@/store';
 import { plural } from '@/utils/format';
@@ -62,6 +63,13 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             {session && <SessionCard session={session} />}
+            <Button
+              title="New session"
+              icon="options-outline"
+              variant={session && !isFinished(session) ? 'secondary' : 'primary'}
+              onPress={() => router.push('/session/new')}
+              disabled={data.words.length === 0}
+            />
             <Text style={[styles.sectionTitle, styles.listsTitle, { color: colors.text }]}>Word lists</Text>
             <Text style={{ color: colors.textSecondary }}>
               {plural(data.lists.length, 'list')} · {plural(data.words.length, 'word')}
