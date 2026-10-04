@@ -69,8 +69,14 @@ export const MAX_RECENT_SESSIONS = 5;
 
 /** Sessions with the same key are "the same session" in the recent list (same filter and kind). */
 export function sessionKey(session: Session): string {
-  const { listId, addedSince, notRevisedSince, onlyNotRemembered } = session.filter;
-  return JSON.stringify([listId, addedSince ?? null, notRevisedSince ?? null, !!onlyNotRemembered, session.kind ?? null]);
+  const { listIds, addedSince, notRevisedSince, onlyNotRemembered } = session.filter;
+  return JSON.stringify([
+    [...listIds].sort(),
+    addedSince ?? null,
+    notRevisedSince ?? null,
+    !!onlyNotRemembered,
+    session.kind ?? null,
+  ]);
 }
 
 /**

@@ -3,7 +3,7 @@ import type { Session } from '../types';
 
 const T = '2026-10-10T10:00:00.000Z';
 const NEVER = { lastRevisedAt: null, remembered: null };
-const filter = { listId: 'all' as const };
+const filter = { listIds: [] };
 /** A "random" source that makes shuffle() keep the original order. */
 const KEEP_ORDER = () => 0.9999;
 
@@ -80,7 +80,7 @@ describe('session', () => {
 });
 
 describe('upsertRecent', () => {
-  const make = (id: string, listId: string, kind?: 'missed') => ({ ...ses.createSession(id, { listId }, [], T, KEEP_ORDER), kind });
+  const make = (id: string, listId: string, kind?: 'missed') => ({ ...ses.createSession(id, { listIds: [listId] }, [], T, KEEP_ORDER), kind });
 
   it('puts the session first and replaces the entry with the same id', () => {
     const a = make('A', 'L1');
@@ -96,6 +96,12 @@ describe('upsertRecent', () => {
     const recent = [make('A', 'L1'), make('B', 'L1', 'missed')];
     expect(ses.upsertRecent(recent, make('C', 'L1')).map((s) => s.id)).toEqual(['C', 'B']);
     expect(ses.upsertRecent(recent, make('D', 'L1', 'missed')).map((s) => s.id)).toEqual(['D', 'A']);
+  });
+
+  it('treats the same lists in another order as the same filter', () => {
+    const a = { ...ses.createSession('A', { listIds: ['L1', 'L2'] }, [], T, KEEP_ORDER) };
+    const b = { ...ses.createSession('B', { listIds: ['L2', 'L1'] }, [], T, KEEP_ORDER) };
+    expect(ses.upsertRecent([a], b).map((s) => s.id)).toEqual(['B']);
   });
 
   it('keeps at most MAX_RECENT_SESSIONS', () => {

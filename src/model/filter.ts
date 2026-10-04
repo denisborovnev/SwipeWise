@@ -14,7 +14,7 @@ export function resolveDateFilter(filter: DateFilter, now: Date): string {
 }
 
 export function matchesFilter(word: Word, filter: SessionFilter, now: Date): boolean {
-  if (filter.listId !== 'all' && word.listId !== filter.listId) {
+  if (filter.listIds.length > 0 && !filter.listIds.includes(word.listId)) {
     return false;
   }
   if (filter.addedSince && word.addedAt < resolveDateFilter(filter.addedSince, now)) {
@@ -31,6 +31,15 @@ export function matchesFilter(word: Word, filter: SessionFilter, now: Date): boo
     return false;
   }
   return true;
+}
+
+/** A filter as saved by earlier versions (one list, and a shuffle flag). */
+type LegacyFilter = Omit<SessionFilter, 'listIds'> & { listIds?: string[]; listId?: string; shuffle?: boolean };
+
+/** Converts a saved filter of any version to the current shape. */
+export function normalizeFilter(saved: LegacyFilter): SessionFilter {
+  const { listId, shuffle: _shuffle, listIds, ...rest } = saved;
+  return { ...rest, listIds: listIds ?? (listId && listId !== 'all' ? [listId] : []) };
 }
 
 /** Fisher–Yates shuffle; `random` returns a number in [0, 1). */

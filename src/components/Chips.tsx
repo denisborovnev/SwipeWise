@@ -9,22 +9,25 @@ export interface ChipOption<K extends string> {
 
 interface ChipsProps<K extends string> {
   options: ChipOption<K>[];
-  selected: K;
+  /** One selected key, or several for multiple choice. */
+  selected: K | readonly K[];
   onSelect: (key: K) => void;
 }
 
-/** Single-choice row of pill buttons that wraps onto several lines. */
+/** Row of pill buttons that wraps onto several lines; single or multiple choice. */
 export function Chips<K extends string>({ options, selected, onSelect }: ChipsProps<K>) {
+  const multiple = Array.isArray(selected);
+  const isSelected = (key: K) => (multiple ? (selected as readonly K[]).includes(key) : selected === key);
   const colors = useThemeColors();
   return (
     <View style={styles.row}>
       {options.map((option) => {
-        const active = option.key === selected;
+        const active = isSelected(option.key);
         return (
           <Pressable
             key={option.key}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
+            accessibilityRole={multiple ? 'checkbox' : 'radio'}
+            accessibilityState={multiple ? { checked: active } : { selected: active }}
             onPress={() => onSelect(option.key)}
             style={({ pressed }) => [
               styles.chip,

@@ -1,3 +1,4 @@
+import { normalizeFilter } from '@/model/filter';
 import { emptyVocabulary } from '@/model/vocabulary';
 import type { Session, Settings, VocabularyData } from '@/model/types';
 
@@ -54,11 +55,9 @@ export function createRepository(backend: StorageBackend): Repository {
 
     async loadRecentSessions() {
       const data = await readJson<{ version: 1; sessions: Session[] }>(backend, FILES.sessions);
-      if (data) {
-        return data.sessions;
-      }
-      const legacy = await readJson<Session>(backend, FILES.legacySession);
-      return legacy ? [legacy] : [];
+      const legacy = data ? null : await readJson<Session>(backend, FILES.legacySession);
+      const sessions = data?.sessions ?? (legacy ? [legacy] : []);
+      return sessions.map((s) => ({ ...s, filter: normalizeFilter(s.filter) }));
     },
     async saveRecentSessions(sessions) {
       await writeJson(backend, FILES.sessions, { version: 1, sessions });
@@ -66,7 +65,8 @@ export function createRepository(backend: StorageBackend): Repository {
     },
 
     async loadSettings() {
-      return (await readJson<Settings>(backend, FILES.settings)) ?? { version: 1 };
+      const settings = (await readJson<Settings>(backend, FILES.settings)) ?? { version: 1 };
+      return settings.lastFilter ? { ...settings, lastFilter: normalizeFilter(settings.lastFilter) } : settings;
     },
     saveSettings: (settings) => writeJson(backend, FILES.settings, settings),
   };

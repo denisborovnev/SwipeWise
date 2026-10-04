@@ -37,7 +37,7 @@ When starting a new session you choose which words to practise:
 
 | Filter              | Description                                                                 |
 |---------------------|-----------------------------------------------------------------------------|
-| **Word list**       | One specific list, or **All words** (across all lists).                     |
+| **Word lists**      | **All words**, or one or several lists practised together.                  |
 | **Added since**     | Only words added after a given date (works for a single list or all words). |
 | **Last revised**    | Only words not revised since a given date (or never revised).               |
 | **Don't remember**  | Only words whose last answer was "didn't remember".                         |

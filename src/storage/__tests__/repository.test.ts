@@ -6,7 +6,7 @@ import { createRepository, FILES } from '../repository';
 
 const session = (id: string): Session => ({
   id,
-  filter: { listId: 'all' },
+  filter: { listIds: [] },
   wordIds: [],
   currentIndex: 0,
   history: [],
@@ -41,6 +41,17 @@ describe('repository', () => {
     const repo = createRepository(createMemoryBackend());
     await repo.saveRecentSessions([session('S1'), session('S2')]);
     expect((await repo.loadRecentSessions()).map((s) => s.id)).toEqual(['S1', 'S2']);
+  });
+
+  it('converts filters saved by earlier versions (single list)', async () => {
+    const old = { ...session('S1'), filter: { listId: 'L1', shuffle: true } };
+    const backend = createMemoryBackend({
+      [FILES.sessions]: JSON.stringify({ version: 1, sessions: [old] }),
+      [FILES.settings]: JSON.stringify({ version: 1, lastFilter: { listId: 'all', onlyNotRemembered: true } }),
+    });
+    const repo = createRepository(backend);
+    expect((await repo.loadRecentSessions())[0].filter).toEqual({ listIds: ['L1'] });
+    expect((await repo.loadSettings()).lastFilter).toEqual({ listIds: [], onlyNotRemembered: true });
   });
 
   it('migrates the single session saved by earlier versions', async () => {

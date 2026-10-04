@@ -16,11 +16,24 @@ export function describeDateFilter(filter: DateFilter): string {
   return `${filter.days} days ago`;
 }
 
+/** "All words", "Travel", "Travel, Food" or "Travel, Food +2 more". */
+function describeLists(listIds: string[], lists: WordList[]): string {
+  if (listIds.length === 0) {
+    return 'All words';
+  }
+  const names = lists
+    .filter((l) => listIds.includes(l.id))
+    .map((l) => l.name)
+    .sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) {
+    return 'Deleted list';
+  }
+  return names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
+}
+
 /** Human-readable summary, e.g. "Travel · added since 7 days ago · don't remember". */
 export function describeFilter(filter: SessionFilter, lists: WordList[]): string {
-  const parts = [
-    filter.listId === 'all' ? 'All words' : (lists.find((l) => l.id === filter.listId)?.name ?? 'Deleted list'),
-  ];
+  const parts = [describeLists(filter.listIds, lists)];
   if (filter.addedSince) {
     parts.push(`added since ${describeDateFilter(filter.addedSince)}`);
   }

@@ -53,7 +53,8 @@ export interface VocabularyData {
 export type DateFilter = { days: number } | { date: string };
 
 export interface SessionFilter {
-  listId: string | 'all';
+  /** Lists to practise; empty = all words. */
+  listIds: string[];
   /** Words added on or after this day; applies to a single list or to all lists. */
   addedSince?: DateFilter;
   /** Words not revised since this day (never-revised words always match). */

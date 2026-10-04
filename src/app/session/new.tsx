@@ -14,6 +14,9 @@ import { formatDate, plural } from '@/utils/format';
 
 type DateChoice = 'any' | `d${number}` | 'date';
 
+/** Chip key of "All words" (list ids are UUIDs, so they can't clash). */
+const ALL = 'all';
+
 const ADDED_PRESETS: ChipOption<DateChoice>[] = [
   { key: 'any', label: 'Any time' },
   { key: 'd0', label: 'Today' },
@@ -47,20 +50,28 @@ export default function NewSessionScreen() {
   const lastFilter = useSession((s) => s.lastFilter);
 
   const [filter, setFilter] = useState<SessionFilter>(() => {
-    const initial = lastFilter ?? { listId: 'all' };
-    // The remembered list may have been deleted since.
-    return initial.listId === 'all' || lists.some((l) => l.id === initial.listId)
-      ? initial
-      : { ...initial, listId: 'all' };
+    const initial = lastFilter ?? { listIds: [] };
+    // Remembered lists may have been deleted since.
+    return { ...initial, listIds: initial.listIds.filter((id) => lists.some((l) => l.id === id)) };
   });
   const update = (patch: Partial<SessionFilter>) => setFilter((f) => ({ ...f, ...patch }));
 
   const count = useMemo(() => selectWords(words, filter, new Date()).length, [words, filter]);
 
   const listOptions: ChipOption<string>[] = [
-    { key: 'all', label: 'All words' },
+    { key: ALL, label: 'All words' },
     ...[...lists].sort((a, b) => a.name.localeCompare(b.name)).map((l) => ({ key: l.id, label: l.name })),
   ];
+
+  /** "All words" clears the selection; a list is toggled (none left = all words). */
+  const toggleList = (key: string) => {
+    if (key === ALL) {
+      update({ listIds: [] });
+    } else {
+      const { listIds } = filter;
+      update({ listIds: listIds.includes(key) ? listIds.filter((id) => id !== key) : [...listIds, key] });
+    }
+  };
 
   const start = () => {
     if (sessionStore.getState().startSession(filter) > 0) {
@@ -71,8 +82,12 @@ export default function NewSessionScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Section title="Word list">
-          <Chips options={listOptions} selected={filter.listId} onSelect={(listId) => update({ listId })} />
+        <Section title="Word lists" hint={lists.length > 1 ? 'Tap several lists to practise them together.' : undefined}>
+          <Chips
+            options={listOptions}
+            selected={filter.listIds.length === 0 ? [ALL] : filter.listIds}
+            onSelect={toggleList}
+          />
         </Section>
 
         <Section title="Added">

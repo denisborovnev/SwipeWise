@@ -48,7 +48,7 @@ interface WordList {
 }
 
 interface SessionFilter {
-  listId: string | 'all';
+  listIds: string[];            // one or several lists; empty = all words
   addedSince?: string;          // applies to a single list or to all
   notRevisedSince?: string;     // includes never-revised words
   onlyNotRemembered?: boolean;  // remembered === 'no' (last answer only)
@@ -145,7 +145,7 @@ src/
 - [x] Session logic in pure functions (`model/session.ts`) + `sessionStore`; filtering (`model/filter.ts`) already implemented here, the filter UI comes in Milestone 4.
 
 ### Milestone 4 – Session filters & continuity ✅
-- [x] New-session screen: word list (All words or one list), Added (any time / today / last 7 / last 30 days / picked date – available for a single list too), Last revised (any time / not today / not in 3 days / a week / a month / not since a picked date; never-revised words always match), "Only words I didn't remember" (last answer = no).
+- [x] New-session screen: word lists (All words, or one or several lists together), Added (any time / today / last 7 / last 30 days / picked date – available for a single list too), Last revised (any time / not today / not in 3 days / a week / a month / not since a picked date; never-revised words always match), "Only words I didn't remember" (last answer = no).
 - [x] Words are always shuffled: every new session (incl. "repeat the words I missed") and every restart goes through the words in a new random order; Continue keeps the current order.
 - [x] Live count on the Start button ("Start · 12 words" / "No words match").
 - [x] The last filter is remembered (`settings.json`) and preselected next time; relative choices ("last 7 days") stay relative.

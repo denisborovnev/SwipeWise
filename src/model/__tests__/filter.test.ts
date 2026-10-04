@@ -1,4 +1,4 @@
-import { matchesFilter, resolveDateFilter, selectWords, shuffle } from '../filter';
+import { matchesFilter, normalizeFilter, resolveDateFilter, selectWords, shuffle } from '../filter';
 import type { SessionFilter, Word } from '../types';
 
 const NOW = new Date(2026, 9, 10, 15, 30); // 10 Oct 2026, 15:30 local time
@@ -20,7 +20,7 @@ function word(id: string, patch: Partial<Word> = {}): Word {
   };
 }
 
-const all: SessionFilter = { listId: 'all' };
+const all: SessionFilter = { listIds: [] };
 
 describe('resolveDateFilter', () => {
   it('days: 0 means the start of today', () => {
@@ -37,13 +37,16 @@ describe('resolveDateFilter', () => {
 });
 
 describe('matchesFilter', () => {
-  it('filters by list', () => {
-    expect(matchesFilter(word('a'), { ...all, listId: 'L1' }, NOW)).toBe(true);
-    expect(matchesFilter(word('a'), { ...all, listId: 'L2' }, NOW)).toBe(false);
+  it('filters by one or several lists', () => {
+    expect(matchesFilter(word('a'), all, NOW)).toBe(true);
+    expect(matchesFilter(word('a'), { listIds: ['L1'] }, NOW)).toBe(true);
+    expect(matchesFilter(word('a'), { listIds: ['L2'] }, NOW)).toBe(false);
+    expect(matchesFilter(word('a'), { listIds: ['L2', 'L1'] }, NOW)).toBe(true);
+    expect(matchesFilter(word('a', { listId: 'L3' }), { listIds: ['L1', 'L2'] }, NOW)).toBe(false);
   });
 
   it('filters by added since, also within a single list', () => {
-    const filter: SessionFilter = { ...all, listId: 'L1', addedSince: { days: 3 } }; // since 7 Oct
+    const filter: SessionFilter = { listIds: ['L1'], addedSince: { days: 3 } }; // since 7 Oct
     expect(matchesFilter(word('a', { addedAt: local(7, 0) }), filter, NOW)).toBe(true);
     expect(matchesFilter(word('a', { addedAt: local(6, 23) }), filter, NOW)).toBe(false);
   });
@@ -64,7 +67,7 @@ describe('matchesFilter', () => {
 
   it('combines all conditions', () => {
     const filter: SessionFilter = {
-      listId: 'L1',
+      listIds: ['L1'],
       addedSince: { days: 7 },
       notRevisedSince: { days: 0 },
       onlyNotRemembered: true,
@@ -83,6 +86,23 @@ describe('selectWords', () => {
 
   it('returns words oldest first', () => {
     expect(selectWords(words, all, NOW)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('normalizeFilter', () => {
+  it('converts filters saved by earlier versions', () => {
+    expect(normalizeFilter({ listId: 'all', shuffle: true } as never)).toEqual({ listIds: [] });
+    expect(normalizeFilter({ listId: 'L1', onlyNotRemembered: true } as never)).toEqual({
+      listIds: ['L1'],
+      onlyNotRemembered: true,
+    });
+  });
+
+  it('keeps current filters as they are', () => {
+    expect(normalizeFilter({ listIds: ['L1', 'L2'], addedSince: { days: 7 } })).toEqual({
+      listIds: ['L1', 'L2'],
+      addedSince: { days: 7 },
+    });
   });
 });
 
