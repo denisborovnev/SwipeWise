@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import { selectWords } from '@/model/filter';
+import { replaceLists, selectWords } from '@/model/filter';
 import * as ses from '@/model/session';
 import type { Answer, Session, SessionFilter } from '@/model/types';
 import { createDebouncedTask } from '@/storage/debounce';
@@ -35,6 +35,8 @@ export interface SessionState {
   undo(): void;
   /** Same words, shuffled again, from the first card. */
   restart(): void;
+  /** After merging lists: sessions and the remembered filter use the merged list instead. */
+  replaceLists(sourceListIds: string[], targetListId: string): void;
   /** Skips cards whose words were deleted after the session was created. */
   skipMissing(): void;
 }
@@ -177,6 +179,20 @@ export function createSessionStore({
         const { session } = get();
         if (session) {
           setSession(ses.restartSession(session, nowIso(), random));
+        }
+      },
+
+      replaceLists(sourceListIds, targetListId) {
+        const { recent, lastFilter } = get();
+        const nextRecent = recent.map((s) => {
+          const filter = replaceLists(s.filter, sourceListIds, targetListId);
+          return filter === s.filter ? s : { ...s, filter };
+        });
+        set({ recent: nextRecent, session: nextRecent[0] ?? null });
+        saver.schedule();
+        const nextFilter = lastFilter && replaceLists(lastFilter, sourceListIds, targetListId);
+        if (nextFilter && nextFilter !== lastFilter) {
+          rememberFilter(nextFilter).catch((e) => console.error('Could not save the filter', e));
         }
       },
 

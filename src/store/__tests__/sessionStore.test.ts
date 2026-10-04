@@ -184,4 +184,18 @@ describe('sessionStore', () => {
       expect(original.filter).toEqual({ listIds: [listId] });
     });
   });
+
+  it('uses the merged list in sessions and the remembered filter after merging', async () => {
+    const { sessions, vocabulary, listId, repository } = await setup();
+    const kitchen = vocabulary.getState().data.lists.find((l) => l.name === 'Kitchen')!.id;
+    sessions.getState().startSession({ listIds: [kitchen] });
+
+    vocabulary.getState().mergeLists(listId, [kitchen], 'Travel');
+    sessions.getState().replaceLists([kitchen], listId);
+    expect(sessions.getState().session?.filter.listIds).toEqual([listId]);
+    expect(sessions.getState().lastFilter).toEqual({ listIds: [listId] });
+    await sessions.getState().flush();
+    await new Promise((r) => setTimeout(r, 0));
+    expect((await repository.loadSettings()).lastFilter).toEqual({ listIds: [listId] });
+  });
 });

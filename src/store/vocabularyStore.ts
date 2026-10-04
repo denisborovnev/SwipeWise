@@ -22,6 +22,8 @@ export interface VocabularyState {
   addList(name: string): string;
   renameList(listId: string, name: string): void;
   deleteList(listId: string): void;
+  /** Moves the words of the source lists into the target list and deletes the source lists. */
+  mergeLists(targetListId: string, sourceListIds: string[], name: string): void;
 
   addWord(listId: string, input: NewWordInput): string;
   updateWord(wordId: string, patch: WordPatch): void;
@@ -108,6 +110,8 @@ export function createVocabularyStore({
       },
       renameList: (listId, name) => change((d) => voc.renameList(d, listId, name)),
       deleteList: (listId) => change((d) => voc.deleteList(d, listId)),
+      mergeLists: (targetListId, sourceListIds, name) =>
+        change((d) => voc.mergeLists(d, targetListId, sourceListIds, name, now())),
 
       addWord(listId, input) {
         const id = newId();

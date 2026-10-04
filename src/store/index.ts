@@ -80,6 +80,22 @@ export async function deleteCourse(courseId: string) {
   }
 }
 
+/**
+ * Merges lists into the oldest of them (so the merged list keeps its date) and returns its id.
+ * Sessions that used the merged lists use the merged list afterwards.
+ */
+export function mergeLists(listIds: string[], name: string): string {
+  const lists = vocabularyStore.getState().data.lists.filter((l) => listIds.includes(l.id));
+  if (lists.length < 2) {
+    throw new Error('Select at least two lists to merge');
+  }
+  const target = [...lists].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  const sources = lists.filter((l) => l.id !== target.id).map((l) => l.id);
+  vocabularyStore.getState().mergeLists(target.id, sources, name);
+  sessionStore.getState().replaceLists(sources, target.id);
+  return target.id;
+}
+
 /** Writes all pending changes to disk (e.g. when the app goes to background). */
 export async function flushAll() {
   await Promise.all([vocabularyStore.getState().flush(), sessionStore.getState().flush()]);

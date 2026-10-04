@@ -1,5 +1,11 @@
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
+## Project documentation
+
+- [TECHNICAL.md](TECHNICAL.md) – how the app behaves (courses, lists, sessions, sync rules), the Google Sheets format, tech stack and development setup. Read it before changing app behaviour, and keep it up to date when behaviour changes.
+- [implementationplan.md](implementationplan.md) – data model, project structure, milestones and progress.
+- [README.md](README.md) – short, user-facing description of the app.
+
 ## Expo has changed — do not trust your training data
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:

@@ -59,3 +59,12 @@ export function selectWords(words: readonly Word[], filter: SessionFilter, now: 
     .sort((a, b) => a.addedAt.localeCompare(b.addedAt))
     .map((w) => w.id);
 }
+
+/** The filter with `sourceListIds` replaced by `targetListId` (after merging lists). */
+export function replaceLists(filter: SessionFilter, sourceListIds: string[], targetListId: string): SessionFilter {
+  if (!filter.listIds.some((id) => sourceListIds.includes(id))) {
+    return filter;
+  }
+  const listIds = filter.listIds.map((id) => (sourceListIds.includes(id) ? targetListId : id));
+  return { ...filter, listIds: [...new Set(listIds)] };
+}

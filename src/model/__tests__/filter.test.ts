@@ -1,4 +1,4 @@
-import { matchesFilter, normalizeFilter, resolveDateFilter, selectWords, shuffle } from '../filter';
+import { matchesFilter, normalizeFilter, replaceLists, resolveDateFilter, selectWords, shuffle } from '../filter';
 import type { SessionFilter, Word } from '../types';
 
 const NOW = new Date(2026, 9, 10, 15, 30); // 10 Oct 2026, 15:30 local time
@@ -116,5 +116,12 @@ describe('shuffle', () => {
     const result = shuffle(input, Math.random);
     expect([...result].sort()).toEqual(input);
     expect(input).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('replaces merged lists in a filter', () => {
+    const filter: SessionFilter = { listIds: ['A', 'B', 'C'], onlyNotRemembered: true };
+    expect(replaceLists(filter, ['B', 'C'], 'A')).toEqual({ listIds: ['A'], onlyNotRemembered: true });
+    expect(replaceLists(filter, ['X'], 'A')).toBe(filter);
+    expect(replaceLists({ listIds: [] }, ['B'], 'A')).toEqual({ listIds: [] });
   });
 });

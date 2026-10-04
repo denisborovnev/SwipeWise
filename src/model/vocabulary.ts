@@ -108,3 +108,38 @@ export function findDuplicate(
       (w.front.toLowerCase() === front || w.back.toLowerCase() === back),
   );
 }
+
+/**
+ * Moves the words of `sourceListIds` into `targetListId`, deletes the source lists and names the
+ * target `name`. Words keep their review values; they are marked dirty because their list changed.
+ */
+export function mergeLists(
+  data: VocabularyData,
+  targetListId: string,
+  sourceListIds: string[],
+  name: string,
+  now: string,
+): VocabularyData {
+  const sources = new Set(sourceListIds.filter((id) => id !== targetListId));
+  return {
+    ...data,
+    lists: data.lists
+      .filter((l) => !sources.has(l.id))
+      .map((l) => (l.id === targetListId ? { ...l, name: name.trim() } : l)),
+    words: data.words.map((w) => (sources.has(w.listId) ? { ...w, listId: targetListId, dirty: true, updatedAt: now } : w)),
+  };
+}
+
+/** Number of words that have the same front and back as an earlier word (case-insensitive). */
+export function countDuplicates(words: Pick<Word, 'front' | 'back'>[]): number {
+  const seen = new Set<string>();
+  let duplicates = 0;
+  for (const w of words) {
+    const key = `${w.front.toLowerCase()}\n${w.back.toLowerCase()}`;
+    if (seen.has(key)) {
+      duplicates++;
+    }
+    seen.add(key);
+  }
+  return duplicates;
+}

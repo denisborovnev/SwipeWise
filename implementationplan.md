@@ -180,6 +180,13 @@ src/
 - [x] New session: "All words", the 4 newest lists and selected older lists as chips; "Choose lists…" opens a searchable multiple-choice picker.
 - [x] Dev helper: opening `exp://127.0.0.1:8081/--/dev-seed` adds 10 sample lists (dev builds only).
 
+### Merging lists ✅
+- [x] All lists screen: **Select** (or long-press a list) → checkboxes → **Merge N lists**. Nothing is ever merged automatically.
+- [x] Merge dialog: name of the merged list (defaults to the oldest list's name), a summary ("4 lists · 37 words") and a note when the same word is in more than one of them; **Merge** asks for confirmation (it can't be undone).
+- [x] The words move into the oldest of the lists (so the merged list keeps its date and place) and keep their Added / LastRevised / Remembered values; the other lists are deleted.
+- [x] Recent sessions and the remembered filter that used the merged lists now use the merged list, so Continue keeps working.
+- [x] In the sheet (Milestone 6): the words are moved to the merged list's tab and the other tabs are deleted with the next push.
+
 ### Courses ✅
 - [x] `Course` = name + language being learned (BCP-47 code, picked from a built-in list of languages incl. regional variants such as English (US/UK), for pronunciation later). Only the learned language is stored; the native language is not asked for.
 - [x] Every course has its own word lists, words, recent sessions, last filter and (from Milestone 5) spreadsheet: each course's files live in `courses/<id>/`, the stores load the files of the current course.
@@ -191,7 +198,7 @@ src/
 
 ### Milestone 5 – Google Sheets connection
 - [ ] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
-- [ ] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with Android Studio's bundled JBR (`JAVA_HOME`) – the system Java 8 is too old. `android/` is generated (git-ignored), never edited by hand.
+- [ ] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with **JDK 21** (`JAVA_HOME`; e.g. the Temurin 21 in `~/.jdks`). The system Java 8 is too old, and Android Studio's bundled JBR is Java 25, whose "restricted method" warning makes the CMake configure step of react-native-screens / worklets fail. `android/` is generated (git-ignored), never edited by hand.
 - [x] `@react-native-google-signin/google-signin` installed. Its Expo config plugin is **not** used: without Firebase it only configures iOS (and requires an iOS client id); Android needs no native config.
 - [x] Google Cloud project: **Sheets API** and **Drive API** enabled; OAuth consent screen (External, Testing mode, the user as test user, scope `drive.file`); OAuth clients:
   - **Web** client – its id is passed to the sign-in library (`webClientId`); kept in `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (git-ignored, not in the source).
@@ -230,7 +237,7 @@ src/
   - Display names stay unique even if the dates differ.
 - [ ] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
 - [ ] **Tab size:** tabs are created with just the rows and the 7 columns they need (`addSheet` with `gridProperties`), and rows are appended as words are added. A default tab (1000 × 26 = 26,000 cells) would waste the spreadsheet's 10-million-cell budget.
-- [ ] **Tab limit warning:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen suggests archiving old lists (see *Archiving old lists*).
+- [ ] **Tab limit note:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen shows a note: "The spreadsheet is getting full (180 of ~200 tabs). Merge older lists to make room." No automatic action.
 - [ ] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The default empty `Sheet1` tab is renamed/reused for the first list. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
@@ -257,16 +264,6 @@ Only the **current course** is synced (another course is synced when the user sw
 
 **UI:** sync status icons (Courses screen rows, home header) and "Last synced …" on the course screen – see Milestone 5.
 
-### Archiving old lists (after Milestone 6)
-A spreadsheet holds at most ~200 tabs (widely reported; the documented limit is 10 million cells). With a list per lesson that is reached in about two years, so old lists can be merged into **one archive tab per year**.
-- [ ] Archive tab `Archive 2025` holds the lists created in 2025, one row per word, with two extra columns: `List` (list name) and `ListDate` (`YYYY-MM-DD`, the list's creation date), plus the usual Front / Back / Examples / Added / LastRevised / Remembered / Id.
-- [ ] **In the app nothing changes:** archived lists are still separate lists that can be practised, edited and added to (new words of an archived list are appended to its archive tab). The list screen only shows a small "archived" note.
-- [ ] **Archive:** course screen → "Archive lists older than…" (pick a date; suggested automatically near the tab limit, with confirmation). Moves the words of each old list into the archive tab of its year and deletes the list's tab, in one batch.
-- [ ] **Unarchive** a list (list menu) moves it back to its own tab.
-- [ ] **Editing the archive by hand:** rows are grouped by the `List` column; a row with a new `List` value becomes a new list (dated by `ListDate`, or today if empty); an empty `List` value goes to a list named after the archive tab's year.
-- [ ] Parsing: a tab named `Archive YYYY` is an archive tab; header detection, system columns and hand-added rows work as for list tabs (`List` / `ListDate` are found by header name).
-- [ ] Yearly archive tabs mean ~200 tabs last for many years, so a second spreadsheet per course should not be needed. If it ever is, a course can be extended to several spreadsheets (each tagged with the course id).
-
 ### Milestone 7 – Polish & release
 - [ ] Empty states, error messages, loading skeletons.
 - [ ] Dark mode.
@@ -282,7 +279,7 @@ A spreadsheet holds at most ~200 tabs (widely reported; the documented limit is 
 - **Header detection.** A tab whose first data row is literally "Front" / "Back" would be mistaken for a header – acceptable edge case.
 - **Row matching before the `Id` is written.** Hand-added rows are matched by Front+Back until the next push writes their `Id`; if the user edits such a row in between, it is treated as a new word. Acceptable, since the next push usually happens within a minute.
 - **Concurrent edits.** If the user edits the sheet while the app is pushing, row mapping by `Id` (re-read before write) keeps updates on the correct rows.
-- **Spreadsheet size.** ~200 tabs per spreadsheet (widely reported) and 10 million cells (documented). Tabs are sized to their content; old lists can be archived into yearly tabs (see *Archiving old lists*).
+- **Spreadsheet size.** ~200 tabs per spreadsheet (widely reported) and 10 million cells (documented). Tabs are sized to their content; near the limit the user is asked to merge older lists (see *Merging lists*).
 - **API quotas.** Sheets API allows ~60 requests/min/user – batching keeps the app far below that.
 - **Token expiry.** Access tokens last ~1h; refresh silently via the Google Sign-In library.
 

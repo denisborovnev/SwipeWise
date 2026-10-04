@@ -8,6 +8,8 @@ import { Button } from './Button';
 interface TextPromptModalProps {
   visible: boolean;
   title: string;
+  /** Optional text under the title. */
+  message?: string;
   initialValue?: string;
   placeholder?: string;
   submitLabel?: string;
@@ -30,6 +32,7 @@ export function TextPromptModal(props: TextPromptModalProps) {
 
 function PromptDialog({
   title,
+  message,
   initialValue = '',
   placeholder,
   submitLabel = 'Save',
@@ -48,6 +51,7 @@ function PromptDialog({
       <Pressable style={styles.backdrop} onPress={onCancel}>
         <Pressable style={[styles.dialog, { backgroundColor: colors.background }]}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          {message && <Text style={{ color: colors.textSecondary }}>{message}</Text>}
           <TextInput
             autoFocus
             selectTextOnFocus={selectInitialValue}

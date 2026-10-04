@@ -69,4 +69,32 @@ describe('vocabulary', () => {
     expect(voc.findDuplicate(data, 'L2', { front: 'машина', back: 'car' })).toBeUndefined();
     expect(voc.findDuplicate(data, 'L1', { front: 'машина', back: 'car' }, 'W1')).toBeUndefined();
   });
+
+  it('merges lists into the target list, keeping review values', () => {
+    let d = voc.addList(withList(), 'L2', 'Food', T0);
+    d = voc.addList(d, 'L3', 'Kitchen', T0);
+    d = voc.addWord(d, 'W1', 'L1', { front: 'a', back: 'A' }, T0);
+    d = voc.addWord(d, 'W2', 'L2', { front: 'b', back: 'B' }, T0);
+    d = voc.addWord(d, 'W3', 'L3', { front: 'c', back: 'C' }, T0);
+    d = voc.recordAnswer(d, 'W2', 'no', T0);
+
+    const merged = voc.mergeLists(d, 'L1', ['L2', 'L1'], ' October ', T1);
+    expect(merged.lists.map((l) => [l.id, l.name])).toEqual([
+      ['L1', 'October'],
+      ['L3', 'Kitchen'],
+    ]);
+    expect(merged.words.map((w) => w.listId)).toEqual(['L1', 'L1', 'L3']);
+    expect(merged.words[1]).toMatchObject({ remembered: 'no', lastRevisedAt: T0, updatedAt: T1, dirty: true });
+    expect(merged.words[2]).toBe(d.words[2]);
+  });
+
+  it('counts words that appear more than once', () => {
+    const words = [
+      { front: 'Car', back: 'машина' },
+      { front: 'car', back: 'МАШИНА' },
+      { front: 'car', back: 'автомобиль' },
+      { front: 'car', back: 'машина' },
+    ];
+    expect(voc.countDuplicates(words)).toBe(2);
+  });
 });

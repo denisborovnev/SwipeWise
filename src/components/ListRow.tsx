@@ -6,14 +6,30 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import type { ListWithCount } from '@/model/lists';
 import { formatDate, plural } from '@/utils/format';
 
+interface ListRowProps {
+  list: ListWithCount;
+  /** In selection mode the row shows a checkbox and a tap toggles it instead of opening the list. */
+  selection?: { selected: boolean; onToggle: () => void };
+  onLongPress?: () => void;
+}
+
 /** A word list in a list of lists; opens the list screen. */
-export function ListRow({ list }: { list: ListWithCount }) {
+export function ListRow({ list, selection, onLongPress }: ListRowProps) {
   const colors = useThemeColors();
   return (
     <Pressable
-      accessibilityRole="button"
-      onPress={() => router.push({ pathname: '/lists/[id]', params: { id: list.id } })}
+      accessibilityRole={selection ? 'checkbox' : 'button'}
+      accessibilityState={selection ? { checked: selection.selected } : undefined}
+      onPress={selection ? selection.onToggle : () => router.push({ pathname: '/lists/[id]', params: { id: list.id } })}
+      onLongPress={onLongPress}
       style={({ pressed }) => [styles.row, { backgroundColor: colors.card, opacity: pressed ? 0.7 : 1 }]}>
+      {selection && (
+        <Ionicons
+          name={selection.selected ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={selection.selected ? colors.primary : colors.textSecondary}
+        />
+      )}
       <View style={styles.text}>
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
           {list.name}
@@ -22,7 +38,7 @@ export function ListRow({ list }: { list: ListWithCount }) {
           {formatDate(list.createdAt)} · {plural(list.wordCount, 'word')}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      {!selection && <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
     </Pressable>
   );
 }
