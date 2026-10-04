@@ -88,12 +88,12 @@ Local files (in `<documents>/myvocabulary/`):
 src/
   app/                       # expo-router screens (only routes live here)
     _layout.tsx              # Stack navigator, loads data, flushes on background
-    index.tsx                # Home: "Continue session" / "New session" / Lists
+    index.tsx                # Home: "Continue session" / "New session" + word lists
     session/new.tsx          # Filter selection
     session/play.tsx         # Card game
     session/summary.tsx      # Results of the session
-    lists/index.tsx          # All lists
-    lists/[id].tsx           # Words of a list, add/edit words
+    lists/[id].tsx           # Words of a list, rename/delete list
+    word.tsx                 # Add / edit word (modal)
     settings.tsx             # Connect / disconnect spreadsheet, sync status
   constants/theme.ts         # colors (light/dark), spacing
   model/                     # types + pure functions (vocabulary ops, filters, demo data)
@@ -122,11 +122,12 @@ src/
 - [x] Home screen showing lists and word counts (placeholder until Milestone 2).
 - [x] Unit tests (Jest) for model, repository, debounce and store.
 
-### Milestone 2 – Word list management (offline)
-- [ ] Lists screen: create / rename / delete list, show word count.
-- [ ] List detail screen: list words, add word (front, back, examples), edit, delete.
-- [ ] "Quick add" mode: after saving, the form stays open for the next word.
-- [ ] Validation: front and back required; warn on duplicate front/back in the same list.
+### Milestone 2 – Word list management (offline) ✅
+- [x] Home screen lists the word lists (sorted by name, with word counts); create a list from there.
+- [x] List screen: words (newest first) with a remembered / not remembered / not revised dot; ⋮ menu to rename or delete the list.
+- [x] Add / edit word modal (front, back, examples one per line); delete from the edit screen.
+- [x] "Quick add" mode: after adding, the form clears and stays open for the next word.
+- [x] Validation: front and back required; warning with "Add anyway" for a duplicate front or back in the same list; list names follow the Sheets tab-name rules (unique, no leading `_`, no `:  / ? * [ ]`, max 100 chars).
 
 ### Milestone 3 – Flashcard game
 - [ ] `FlashCard` component:

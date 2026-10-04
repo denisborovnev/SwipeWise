@@ -35,6 +35,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="index" options={{ title: 'MyVocabulary' }} />
+          <Stack.Screen name="lists/[id]" options={{ title: '' }} />
+          <Stack.Screen name="word" options={{ presentation: 'modal' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
