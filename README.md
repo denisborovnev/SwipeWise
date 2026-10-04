@@ -133,6 +133,9 @@ next push.
 - **Id** – technical column managed by the app (lets the app match rows even if you sort or move them).
 - Columns are recognised by their header name, so you can reorder them freely.
 - Tabs whose names start with `_` (e.g. `_notes`) are ignored by the app.
+- **Archive tabs** (planned): old lists can be merged into one tab per year, e.g. `Archive 2025`, with extra
+  `List` and `ListDate` columns. A spreadsheet holds about 200 tabs, so with a list per lesson archiving keeps
+  a course in one spreadsheet for many years. In the app, archived lists work like any other list.
 - Tab names end with the list's creation date: `Travel - 2026-10-04`. A tab you add by hand without a
   date is dated the day the app first sees it, and the app adds the date to its name.
 

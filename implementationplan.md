@@ -229,6 +229,8 @@ src/
   - List names are limited to 87 characters so that name + " - YYYY-MM-DD" fits the 100-character tab name limit (already enforced).
   - Display names stay unique even if the dates differ.
 - [ ] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
+- [ ] **Tab size:** tabs are created with just the rows and the 7 columns they need (`addSheet` with `gridProperties`), and rows are appended as words are added. A default tab (1000 × 26 = 26,000 cells) would waste the spreadsheet's 10-million-cell budget.
+- [ ] **Tab limit warning:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen suggests archiving old lists (see *Archiving old lists*).
 - [ ] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The default empty `Sheet1` tab is renamed/reused for the first list. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
@@ -255,6 +257,16 @@ Only the **current course** is synced (another course is synced when the user sw
 
 **UI:** sync status icons (Courses screen rows, home header) and "Last synced …" on the course screen – see Milestone 5.
 
+### Archiving old lists (after Milestone 6)
+A spreadsheet holds at most ~200 tabs (widely reported; the documented limit is 10 million cells). With a list per lesson that is reached in about two years, so old lists can be merged into **one archive tab per year**.
+- [ ] Archive tab `Archive 2025` holds the lists created in 2025, one row per word, with two extra columns: `List` (list name) and `ListDate` (`YYYY-MM-DD`, the list's creation date), plus the usual Front / Back / Examples / Added / LastRevised / Remembered / Id.
+- [ ] **In the app nothing changes:** archived lists are still separate lists that can be practised, edited and added to (new words of an archived list are appended to its archive tab). The list screen only shows a small "archived" note.
+- [ ] **Archive:** course screen → "Archive lists older than…" (pick a date; suggested automatically near the tab limit, with confirmation). Moves the words of each old list into the archive tab of its year and deletes the list's tab, in one batch.
+- [ ] **Unarchive** a list (list menu) moves it back to its own tab.
+- [ ] **Editing the archive by hand:** rows are grouped by the `List` column; a row with a new `List` value becomes a new list (dated by `ListDate`, or today if empty); an empty `List` value goes to a list named after the archive tab's year.
+- [ ] Parsing: a tab named `Archive YYYY` is an archive tab; header detection, system columns and hand-added rows work as for list tabs (`List` / `ListDate` are found by header name).
+- [ ] Yearly archive tabs mean ~200 tabs last for many years, so a second spreadsheet per course should not be needed. If it ever is, a course can be extended to several spreadsheets (each tagged with the course id).
+
 ### Milestone 7 – Polish & release
 - [ ] Empty states, error messages, loading skeletons.
 - [ ] Dark mode.
@@ -270,6 +282,7 @@ Only the **current course** is synced (another course is synced when the user sw
 - **Header detection.** A tab whose first data row is literally "Front" / "Back" would be mistaken for a header – acceptable edge case.
 - **Row matching before the `Id` is written.** Hand-added rows are matched by Front+Back until the next push writes their `Id`; if the user edits such a row in between, it is treated as a new word. Acceptable, since the next push usually happens within a minute.
 - **Concurrent edits.** If the user edits the sheet while the app is pushing, row mapping by `Id` (re-read before write) keeps updates on the correct rows.
+- **Spreadsheet size.** ~200 tabs per spreadsheet (widely reported) and 10 million cells (documented). Tabs are sized to their content; old lists can be archived into yearly tabs (see *Archiving old lists*).
 - **API quotas.** Sheets API allows ~60 requests/min/user – batching keeps the app far below that.
 - **Token expiry.** Access tokens last ~1h; refresh silently via the Google Sign-In library.
 
