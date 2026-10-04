@@ -83,7 +83,8 @@ Every word stores:
 - **Offline first.** All data is kept in a local cache on the device file system. The app is fully
   usable without any spreadsheet connected.
 - **Google Sheets (optional).** Each course has its own spreadsheet, which is the "source of truth" when connected:
-  - You sign in with your Google account once; each course is then connected separately.
+  - You sign in with your Google account once; each course is then connected separately
+    (Courses → ✏️ → **Connect Google Sheets**).
   - The **app creates the spreadsheet** (e.g. "SwipeWise – English") in your Google Drive when you connect
     a course. After that you can open and edit it in Google Sheets like any other spreadsheet.
   - The app can access **only the files it created** – not the rest of your Google Drive or your other
@@ -94,11 +95,14 @@ Every word stores:
   - After reinstalling the app (or on a new phone), signing in with the same Google account finds the
     spreadsheets created earlier and restores your courses from them.
 - **Sync rules**
-  - On app start: the cache is loaded instantly, then refreshed from the spreadsheet in the background.
-  - Review results (swipes) are batched and saved to the spreadsheet periodically
-    (and when the app goes to background or a session ends).
-  - **New words / new lists are saved immediately.**
-  - If the device is offline, changes are queued and pushed once the connection is back.
+  - Only the current course is synced; another course syncs when you switch to it.
+  - **From the sheet:** on app start, when switching course, when returning to the app after a few minutes,
+    on pull-to-refresh and on **Sync now**. The cache is shown instantly and refreshed in the background.
+    Fix-ups for rows and tabs you added by hand (ids, dates, header row) are written right after reading.
+  - **To the sheet:** word and list changes **right away**; review results (swipes) when a session finishes,
+    when the app goes to background, and on the next start.
+  - If the device is offline, changes stay on the phone marked as not synced and are pushed later.
+  - The sync status is shown as a cloud icon on the home screen and in the course list.
 
 ---
 

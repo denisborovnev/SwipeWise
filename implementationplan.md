@@ -27,7 +27,7 @@ without changing the rest of the app.
 ```ts
 interface Course {          // everything studied for one language
   id: string;
-  name: string;              // defaults to the language name, e.g. "English (UK)"
+  name: string;              // defaults to the language without the region, e.g. "English"
   language: string | null;   // BCP-47 code of the language being learned, e.g. "en-GB"
                              // (null only for data from before courses existed, until the user picks it)
   createdAt: string;
@@ -103,7 +103,7 @@ src/
     _layout.tsx              # Stack navigator, loads data, flushes on background
     index.tsx                # Home: course switcher, "Continue session" / "New session" + word lists
     courses.tsx              # Switch course, add / edit courses
-    course.tsx               # Create / edit a course: language + name (modal)
+    course.tsx               # Create / edit a course: language + name, Google Sheets connection (modal)
     session/new.tsx          # Filter selection
     session/play.tsx         # Card game
     session/recent.tsx       # Last 5 sessions
@@ -112,7 +112,6 @@ src/
     session/summary.tsx      # Results of the session
     lists/[id].tsx           # Words of a list, rename/delete list
     word.tsx                 # Add / edit word (modal)
-    settings.tsx             # Connect / disconnect spreadsheet, sync status
   constants/theme.ts         # colors (light/dark), spacing
   model/                     # types + pure functions (vocabulary ops, filters, demo data)
   storage/                   # StorageBackend (file / in-memory), repository, debounced save
@@ -192,41 +191,54 @@ src/
 
 ### Milestone 5 – Google Sheets connection
 - [ ] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
-- [ ] Switch from Expo Go to an Android **development build** (`npx expo run:android` or `eas build --profile development`); needs JDK 17 (Android Studio's bundled JBR) – the system Java 8 is too old.
-- [ ] Google Cloud project: enable **Sheets API** and **Drive API**, create Android OAuth client (package name + SHA-1 of debug & release keystores), configure OAuth consent screen (Testing mode, add yourself as a test user).
+- [ ] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with Android Studio's bundled JBR (`JAVA_HOME`) – the system Java 8 is too old. `android/` is generated (git-ignored), never edited by hand.
+- [x] `@react-native-google-signin/google-signin` installed. Its Expo config plugin is **not** used: without Firebase it only configures iOS (and requires an iOS client id); Android needs no native config.
+- [x] Google Cloud project: **Sheets API** and **Drive API** enabled; OAuth consent screen (External, Testing mode, the user as test user, scope `drive.file`); OAuth clients:
+  - **Web** client – its id is passed to the sign-in library (`webClientId`); kept in `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (git-ignored, not in the source).
+  - **Android** client – package `com.swipewise.app` + SHA-1 of the debug keystore (the standard React Native debug key, stable across `prebuild`). Not referenced in the app; Google matches it by package + signature. A release keystore needs its SHA-1 added later (Milestone 7).
+- [ ] Emulator: the AVD has Google Play; the user signs in to the test Google account in Android settings.
 - [ ] Scope: **`https://www.googleapis.com/auth/drive.file`** only – the app can access just the files it created itself. It is a *non-sensitive* scope (no Google verification needed, simple consent screen). The Sheets API works with this scope for app-created spreadsheets.
 - [ ] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
 - [ ] **One spreadsheet per course.** The Google account is app-wide (sign in once); each course is connected to its own spreadsheet, stored in the course's `settings.json`.
 - [ ] Every app-created spreadsheet is tagged with Drive `appProperties`: `swipewise=1`, `courseId=<id>`, `language=<code>`, so the app can tell which spreadsheet belongs to which course.
-- [ ] Settings screen (per course): **Connect Google Sheets**:
+- [ ] **UI**
+  - **Courses screen:** each course row shows its sync status icon (☁️✓ synced, ☁️↻ syncing, ☁️✕ error / offline – tap for details, no icon = not connected). Footer: "Signed in as … · Sign out" (app-wide Google account).
+  - **Course screen** (✏️) gets a **Google Sheets** section: not connected → **Connect Google Sheets**; connected → **Open in Google Sheets**, **Sync now**, "Last synced 2 min ago", **Disconnect** (keeps the words on the phone, stops syncing).
+  - **Home screen:** small cloud status icon in the header for the current course (tap → course screen).
+  - **Restore:** if Drive has app-created spreadsheets that no local course uses, the Courses screen offers **Restore N courses from Google Drive**.
+- [ ] **Connect Google Sheets** (course screen):
   1. Sign in (if not signed in yet).
   2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and appProperties has { key='swipewise' and value='1' }` (with `drive.file` it returns only app-created files).
   3. A spreadsheet with this course's `courseId` → reconnect to it. Otherwise **create** a new spreadsheet "SwipeWise – <course name>" (`spreadsheets.create`, then set the `appProperties`).
   4. Show an "Open in Google Sheets" link (`https://docs.google.com/spreadsheets/d/<id>`).
   - Disconnect is also available (keeps local data, stops syncing).
   - Renaming a course renames its spreadsheet (Drive `files.update`); deleting a course leaves the spreadsheet in Drive.
-- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`).
+- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
 - [ ] `sheetsApi.ts`: `createSpreadsheet`, `getSpreadsheet` (tabs), `batchGetValues`, `appendValues`, `batchUpdateValues`, `batchUpdate` (`addSheet`, `updateSheetProperties` for rename, `insertDimension` for header row); `driveApi.ts`: `listAppSpreadsheets`.
 - [ ] `mapper.ts`:
   - header-based column mapping (columns are found by name, case-insensitive, so the user may reorder them);
   - examples newline join/split, date formatting.
-- [ ] **Tab parsing** (on every pull, in memory only – nothing is written during the pull):
+- [ ] **Tab parsing** (on every pull, in memory; the resulting fixes are written right after the pull – see *Normalisation*):
   - **Header detection:** if row 1 contains `Front` and `Back` (case-insensitive) → it is the header; columns are mapped by name. Otherwise there is no header: all rows are words with the default layout A = Front, B = Back, C = Examples, and the tab is marked `needsHeader`.
   - Missing system columns (`Added`, `LastRevised`, `Remembered`, `Id`) → tab is marked `needsColumns`; they will be appended to the right.
   - Rows with Front/Back but no `Id` → hand-added words: generate `Id`, set `Added = now`, leave `LastRevised`/`Remembered` empty; mark the row `needsSystemCells`. Until the `Id` is written, the row is matched by tab + row content (Front+Back).
   - Completely empty rows are skipped; rows with only Front or only Back are flagged as incomplete (shown in the app, not used in sessions).
 - [ ] **List creation date in the tab name**: tabs are named `<list name> - YYYY-MM-DD` (e.g. `Travel - 2026-10-04`); the app shows "Travel" and uses the date as the list's `createdAt`.
-  - Tab without a date suffix (created by hand) → the list gets today's date when the app first sees it, and the tab is renamed with the next push.
+  - Tab without a date suffix (created by hand) → the list gets today's date when the app first sees it, and the tab is renamed right after the pull.
   - Date removed by hand → treated like a tab without a date (dated today); date changed by hand → the app takes the new date.
   - List names are limited to 87 characters so that name + " - YYYY-MM-DD" fits the 100-character tab name limit (already enforced).
   - Display names stay unique even if the dates differ.
-- [ ] **Deferred normalisation** – the pending fixes above are added to the sync queue as a normal (non-urgent) item and written with the **next push** (whichever comes first: a new word, a batch of review results, app going to background). Order within that push: insert header row → append missing system columns → write system cells / review updates.
+- [ ] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
 - [ ] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The default empty `Sheet1` tab is renamed/reused for the first list. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
-**Pull (on app start, on pull-to-refresh, after reconnect):**
+Only the **current course** is synced (another course is synced when the user switches to it).
+
+**Pull (sheet → app):**
+- **On app start** (after pushing anything still pending), **when switching to a course**, **when the app returns from background after more than ~5 minutes**, on **pull-to-refresh** on the home screen, on **Sync now**, and after connecting.
+
 1. Read all tabs (except `_*`) with one `values:batchGet`.
-2. Parse tabs (header detection / system columns / hand-added rows – see Milestone 5); queue the normalisation for the next push.
+2. Parse tabs (header detection / system columns / hand-added rows – see Milestone 5); write the normalisation fixes right after the pull.
 3. Merge per word (matched by `Id`):
    - Content fields (`front`, `back`, `examples`, list) – **sheet wins** unless the local word is `dirty` with content changes.
    - Review fields – take the one with the **newer `lastRevisedAt`**.
@@ -234,14 +246,14 @@ src/
    - Word local but not in sheet → if it was already synced before, it was deleted in the sheet → delete locally; if never synced → keep and push.
    - New tabs → new lists; removed tabs → remove lists (after confirmation if they contain unsynced changes).
 
-**Push:**
-- **New words / new lists / renames → immediately** (enqueue + process queue right away).
-- **Review updates → batched**: flush every N answers (e.g. 10) or 60s, on app background (`AppState`), and at session end.
+**Push (app → sheet):**
+- **Word and list edits** (new / edited / deleted words, new / renamed / deleted lists) → right away, debounced ~2 s so a burst of quick-adds goes out as one request.
+- **Review results** (`LastRevised`, `Remembered`) → **when a session finishes**, **when the app goes to background** (sessions are often left unfinished), and **on the next app start** for anything still pending. Not per swipe.
 - Before updating cells, re-read the `Id` column of affected tabs to map id → current row number (the user may have sorted or inserted rows), then send one `values:batchUpdate`.
-- Queue is persisted; on failure (offline / 5xx) retry with backoff; on network regained (`@react-native-community/netinfo`) process the queue.
+- Queue is persisted; on failure (offline / Google error) the changes stay marked as not synced and are retried on the next app start, return from background, **Sync now**, or network regained (`@react-native-community/netinfo`); the status icon shows ☁️✕ meanwhile. Nothing is lost.
 - Clear `dirty` only after a successful push.
 
-**UI:** sync status indicator (synced / syncing / offline / error) and "last synced at".
+**UI:** sync status icons (Courses screen rows, home header) and "Last synced …" on the course screen – see Milestone 5.
 
 ### Milestone 7 – Polish & release
 - [ ] Empty states, error messages, loading skeletons.
