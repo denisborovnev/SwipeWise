@@ -2,16 +2,26 @@ import type { GoogleApi } from './googleApi';
 import { parseTab, type ParsedTab } from './parseTab';
 import { tabRange } from './sheetFormat';
 
-/** Reads and parses all list tabs (tabs starting with "_" are ignored) with one batchGet. */
-export async function readSpreadsheet(api: GoogleApi, spreadsheetId: string): Promise<ParsedTab[]> {
-  const tabs = (await api.getTabs(spreadsheetId)).filter((t) => !t.title.startsWith('_'));
+/**
+ * Reads and parses all list tabs with one batchGet. Tabs starting with "_" are not lists; they are
+ * only counted (for the tab limit).
+ */
+export async function readSpreadsheet(
+  api: GoogleApi,
+  spreadsheetId: string,
+): Promise<{ tabs: ParsedTab[]; otherTabCount: number }> {
+  const all = await api.getTabs(spreadsheetId);
+  const tabs = all.filter((t) => !t.title.startsWith('_'));
   const values = await api.readValues(
     spreadsheetId,
     tabs.map((t) => tabRange(t.title)),
   );
-  return tabs.map((t, i) =>
-    parseTab({ sheetId: t.sheetId, title: t.title, columnCount: t.columnCount, rows: values[i] ?? [] }),
-  );
+  return {
+    tabs: tabs.map((t, i) =>
+      parseTab({ sheetId: t.sheetId, title: t.title, columnCount: t.columnCount, rows: values[i] ?? [] }),
+    ),
+    otherTabCount: all.length - tabs.length,
+  };
 }
 
 /** Column letters: 0 → A, 25 → Z, 26 → AA. */

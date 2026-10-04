@@ -99,6 +99,11 @@ export async function switchCourse(courseId: string) {
   // setActive changes the state synchronously; opening right away (without awaiting the save first) means
   // the screens never show the new course name with the old course's words.
   const saved = courseStore.getState().setActive(courseId);
+  retry.reset();
+  if (syncStore.getState().status !== 'syncing') {
+    // A running sync of the previous course finishes first and then syncs this one.
+    syncStore.setState({ courseId: null, status: 'idle', error: undefined });
+  }
   await openActiveCourse();
   await saved;
   syncActiveCourse();
@@ -195,7 +200,7 @@ export async function syncActiveCourse(): Promise<void> {
   }
   syncStore.setState({ courseId: course.id, status: 'syncing', error: undefined });
   try {
-    const tabs = await readSpreadsheet(googleApi, course.spreadsheetId);
+    const { tabs, otherTabCount } = await readSpreadsheet(googleApi, course.spreadsheetId);
     // Merge into the data as it is now (the user may have changed something while we were reading).
     if (courseStore.getState().activeCourseId !== course.id || vocabularyStore.getState().status !== 'ready') {
       syncStore.setState({ status: 'idle' });
@@ -213,11 +218,16 @@ export async function syncActiveCourse(): Promise<void> {
     if (courseStore.getState().activeCourseId === course.id) {
       applySync(markPushed(vocabularyStore.getState().data, plan.pushed));
     }
-    await courseStore.getState().updateCourse(course.id, { lastSyncAt: new Date().toISOString() });
+    await courseStore.getState().updateCourse(course.id, {
+      lastSyncAt: new Date().toISOString(),
+      tabCount: otherTabCount + result.data.lists.length,
+    });
     syncStore.setState({ status: 'idle' });
+    retry.reset();
   } catch (e) {
     console.warn('Sync failed', e);
     syncStore.setState({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+    retry.schedule();
   }
   if (syncAgain) {
     syncAgain = false;
@@ -226,6 +236,32 @@ export async function syncActiveCourse(): Promise<void> {
 }
 
 let syncAgain = false;
+
+/** After a failed sync (e.g. offline) try again after 30 s, 1, 2, 4… up to 15 minutes. */
+const retry = (() => {
+  const delays = [30, 60, 120, 240, 480, 900].map((s) => s * 1000);
+  let attempt = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    schedule() {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      const delay = delays[Math.min(attempt++, delays.length - 1)];
+      timer = setTimeout(() => {
+        timer = null;
+        syncActiveCourse();
+      }, delay);
+    },
+    reset() {
+      attempt = 0;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
+})();
 /** True while the sync itself changes the words, so that doesn't schedule another sync. */
 let applyingSync = false;
 

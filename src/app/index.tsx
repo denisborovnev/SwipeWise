@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Footer } from '@/components/Footer';
@@ -12,7 +12,7 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
 import type { Course } from '@/model/types';
-import { useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
+import { syncActiveCourse, useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
 import { plural } from '@/utils/format';
 
 /** How many of the newest lists the home screen shows; the rest are under "All lists". */
@@ -28,6 +28,8 @@ export default function HomeScreen() {
   const data = useVocabulary((s) => s.data);
   const session = useSession((s) => s.session);
   const recentCount = useSession((s) => s.recent.length);
+  const signedIn = useGoogleAccount((s) => s.email !== null);
+  const syncing = useSync((s) => s.status === 'syncing' && s.courseId === course?.id);
 
   const newestLists = useMemo(
     () => sortLists(withWordCounts(data.lists, data.words), 'newest').slice(0, HOME_LIST_COUNT),
@@ -59,6 +61,12 @@ export default function HomeScreen() {
         }}
       />
       <FlatList
+        // Pull down to read changes made in the spreadsheet (connected courses only).
+        refreshControl={
+          course.spreadsheetId && signedIn ? (
+            <RefreshControl refreshing={syncing} onRefresh={() => syncActiveCourse()} colors={[colors.primary]} />
+          ) : undefined
+        }
         contentContainerStyle={styles.content}
         data={newestLists}
         keyExtractor={(l) => l.id}

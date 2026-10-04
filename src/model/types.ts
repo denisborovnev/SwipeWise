@@ -11,6 +11,8 @@ export interface Course {
   spreadsheetId?: string;
   /** When the course was last synced with its spreadsheet. */
   lastSyncAt?: string;
+  /** Number of tabs in the spreadsheet after the last sync (for the tab limit note). */
+  tabCount?: number;
 }
 
 /** Contents of courses.json. */

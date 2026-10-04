@@ -208,7 +208,7 @@ src/
 - [x] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
 - [x] **One spreadsheet per course.** The Google account is app-wide (sign in once); each course is connected to its own spreadsheet; its id (and the last sync time) is stored on the course in `courses.json`.
 - [x] Every app-created spreadsheet is tagged with Drive `appProperties`: `swipewise=1`, `courseId=<id>`, `language=<code>`, so the app can tell which spreadsheet belongs to which course.
-- [ ] **UI** (done: course screen section with Connect / Sync now / Last synced / Open / Disconnect, home cloud icon, account line + Sign out on the Courses screen, cloud icon on connected courses; open: syncing / error state on the Courses rows)
+- [x] **UI**: course screen section with Connect / Sync now / Last synced / Open / Disconnect / tab limit note; home cloud icon (synced / syncing / problem) and pull-to-refresh; account line + Sign out on the Courses screen; sync status icon on connected courses.
   - **Courses screen:** each course row shows its sync status icon (☁️✓ synced, ☁️↻ syncing, ☁️✕ error / offline – tap for details, no icon = not connected). Footer: "Signed in as … · Sign out" (app-wide Google account).
   - **Course screen** (✏️) gets a **Google Sheets** section: not connected → **Connect Google Sheets**; connected → **Open in Google Sheets**, **Sync now**, "Last synced 2 min ago", **Disconnect** (keeps the words on the phone, stops syncing).
   - **Home screen:** small cloud status icon in the header for the current course (tap → course screen).
@@ -220,7 +220,6 @@ src/
   4. Show an "Open in Google Sheets" link (`https://docs.google.com/spreadsheets/d/<id>`).
   - Disconnect is also available (keeps local data, stops syncing).
   - Renaming a course renames its spreadsheet (Drive `files.update`); deleting a course leaves the spreadsheet in Drive.
-- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
 - [x] `sync/googleClient.ts` (fetch with the access token, retry once on 401) and `sync/googleApi.ts`: `listAppSpreadsheets`, `createSpreadsheet`, `writeValues`, `setAppProperties`, `renameFile`, `getTabs`, `readValues`, `batchUpdate`.
 - [x] `sync/sheetFormat.ts` / `sync/parseTab.ts`:
   - header-based column mapping (columns are found by name, case-insensitive, so the user may reorder them);
@@ -237,7 +236,7 @@ src/
   - Display names stay unique even if the dates differ.
 - [x] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
 - [x] **Tab size:** tabs are created with just the rows and the 7 columns they need (`addSheet` with `gridProperties`), and rows are appended as words are added. A default tab (1000 × 26 = 26,000 cells) would waste the spreadsheet's 10-million-cell budget.
-- [ ] **Tab limit note:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen shows a note: "The spreadsheet is getting full (180 of ~200 tabs). Merge older lists to make room." No automatic action.
+- [x] **Tab limit note:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen shows a note: "The spreadsheet is getting full (180 of ~200 tabs). Merge older lists to make room." No automatic action.
 - [x] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The spreadsheet is created with its tabs (no empty `Sheet1`), plus an `_SwipeWise` info tab explaining the format. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
@@ -249,7 +248,7 @@ Implemented as **one sync = read the whole spreadsheet once, merge, write once**
 
 Local bookkeeping: `contentDirty` on words (text / list changed), `dirty` on renamed lists, lists without `sheetId` are new, `deleted` holds deleted word ids and tab ids.
 
-Triggers: app start, course switch, connect, **Sync now**, word / list edits (debounced 2 s), session finished, app to background, app back after > 5 min. A sync requested while one runs is run once more afterwards. Open: pull-to-refresh on the home screen, offline queue / retry with backoff (today: retried on the next trigger).
+Triggers: app start, course switch, connect, **Sync now**, word / list edits (debounced 2 s), session finished, app to background, app back after > 5 min. Pull-to-refresh on the home screen. A sync requested while one runs is run once more afterwards. A failed sync (offline, Google error) is retried after 30 s, 1, 2, 4, 8 and then every 15 minutes, and on every trigger above; nothing is lost meanwhile because the changes stay marked locally. (A network listener – `expo-network` / NetInfo – could retry as soon as the connection is back; not added, as it needs a native rebuild and the backoff covers it.)
 
 Only the **current course** is synced (another course is synced when the user switches to it).
 
@@ -280,6 +279,11 @@ Only the **current course** is synced (another course is synced when the user sw
 - [ ] App icon, splash screen.
 - [ ] Release build via EAS (`.aab` / `.apk`), add release SHA-1 to the OAuth client.
 - [ ] Manual test checklist: offline usage, connect later, edit in sheet → sync, add rows by hand with only Front/Back → system columns filled in, new tab without header → words read correctly and header added on the next push, reinstall app → reconnects to the same spreadsheet, sort rows in sheet → swipe updates go to the right rows, kill app mid-session → continue from the same card, restart session.
+
+### Milestone 8 – Restore courses after a reinstall
+Only once the app has proven itself in daily use.
+- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
+- [ ] Courses screen: "Restore N courses from Google Drive" when Drive has app-created spreadsheets (Drive `files.list` with the `swipewise` app property) that no local course uses; also offered on the welcome screen of a fresh install.
 
 ---
 

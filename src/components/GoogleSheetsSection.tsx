@@ -17,6 +17,10 @@ import { formatDateTime } from '@/utils/format';
 
 import { Button } from './Button';
 
+/** Reported limit of tabs per spreadsheet; the note appears a bit before it. */
+const TAB_LIMIT = 200;
+const TAB_WARNING = 180;
+
 /** Course screen section: connect the course to its own Google spreadsheet, open it, disconnect. */
 export function GoogleSheetsSection({ course }: { course: Course }) {
   const colors = useThemeColors();
@@ -87,6 +91,12 @@ export function GoogleSheetsSection({ course }: { course: Course }) {
             />
           )}
           {!email && <Button title="Sign in to Google" icon="logo-google" onPress={connect} />}
+          {(course.tabCount ?? 0) >= TAB_WARNING && (
+            <Text style={{ color: colors.danger }}>
+              The spreadsheet is getting full ({course.tabCount} of ~{TAB_LIMIT} tabs). Merge older lists to make room
+              (All lists → Select).
+            </Text>
+          )}
           <Button
             title="Open in Google Sheets"
             icon="open-outline"

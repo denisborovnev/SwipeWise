@@ -1,13 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, IconButton } from '@/components/Button';
 import { Footer } from '@/components/Footer';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { languageName } from '@/model/languages';
-import { switchCourse, useCourses, useGoogleAccount, googleAccountStore } from '@/store';
+import { googleAccountStore, switchCourse, useCourses, useGoogleAccount, useSync } from '@/store';
 
 /** All courses: tap one to switch to it. */
 export default function CoursesScreen() {
@@ -15,6 +15,7 @@ export default function CoursesScreen() {
   const courses = useCourses((s) => s.courses);
   const activeCourseId = useCourses((s) => s.activeCourseId);
   const email = useGoogleAccount((s) => s.email);
+  const sync = useSync((s) => s);
   const sorted = useMemo(() => [...courses].sort((a, b) => a.name.localeCompare(b.name)), [courses]);
 
   const select = (courseId: string) => {
@@ -49,9 +50,19 @@ export default function CoursesScreen() {
                   {languageName(item.language)}
                 </Text>
               </View>
-              {item.spreadsheetId && (
-                <Ionicons name="cloud-done-outline" size={20} color={colors.textSecondary} accessibilityLabel="Connected to Google Sheets" />
-              )}
+              {item.spreadsheetId &&
+                (sync.courseId === item.id && sync.status === 'syncing' ? (
+                  <ActivityIndicator color={colors.textSecondary} accessibilityLabel="Syncing" />
+                ) : (sync.courseId === item.id && sync.status === 'error') || !email ? (
+                  <Ionicons name="cloud-offline-outline" size={20} color={colors.danger} accessibilityLabel="Sync problem" />
+                ) : (
+                  <Ionicons
+                    name="cloud-done-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                    accessibilityLabel="Connected to Google Sheets"
+                  />
+                ))}
               <IconButton
                 icon="create-outline"
                 accessibilityLabel={`Edit ${item.name}`}
