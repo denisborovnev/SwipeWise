@@ -178,7 +178,7 @@ src/
 - [x] Home screen shows the 5 newest lists + "All lists (N)".
 - [x] All lists screen: search, sort (newest / oldest / A–Z), month headings for date sorts.
 - [x] New session: "All words", the 4 newest lists and selected older lists as chips; "Choose lists…" opens a searchable multiple-choice picker.
-- [x] Dev helper: opening `exp://127.0.0.1:8081/--/dev-seed` adds 10 sample lists (dev builds only).
+- [x] Dev helper: opening `swipewise://dev-seed` (Expo Go: `exp://127.0.0.1:8081/--/dev-seed`) adds 10 sample lists to the current course (dev builds only).
 
 ### Merging lists ✅
 - [x] All lists screen: **Select** (or long-press a list) → checkboxes → **Merge N lists**. Nothing is ever merged automatically.
@@ -198,7 +198,7 @@ src/
 
 ### Milestone 5 – Google Sheets connection
 - [ ] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
-- [ ] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with **JDK 21** (`JAVA_HOME`; e.g. the Temurin 21 in `~/.jdks`). The system Java 8 is too old, and Android Studio's bundled JBR is Java 25, whose "restricted method" warning makes the CMake configure step of react-native-screens / worklets fail. `android/` is generated (git-ignored), never edited by hand.
+- [x] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with **JDK 21** (`JAVA_HOME`; e.g. the Temurin 21 in `~/.jdks`). The system Java 8 is too old, and Android Studio's bundled JBR is Java 25, whose "restricted method" warning makes the CMake configure step of react-native-screens / worklets fail. `android/` is generated (git-ignored), never edited by hand.
 - [x] `@react-native-google-signin/google-signin` installed. Its Expo config plugin is **not** used: without Firebase it only configures iOS (and requires an iOS client id); Android needs no native config.
 - [x] Google Cloud project: **Sheets API** and **Drive API** enabled; OAuth consent screen (External, Testing mode, the user as test user, scope `drive.file`); OAuth clients:
   - **Web** client – its id is passed to the sign-in library (`webClientId`); kept in `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (git-ignored, not in the source).

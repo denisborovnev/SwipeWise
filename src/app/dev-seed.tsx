@@ -4,20 +4,21 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 
 import { createSampleLists } from '@/dev/sampleLists';
-import { useVocabulary, vocabularyStore } from '@/store';
+import { useCourses, useVocabulary, vocabularyStore } from '@/store';
 
 /**
- * Development helper: opening the deep link `…/--/dev-seed` adds the sample word lists and goes
- * back to the home screen. Does nothing in release builds.
+ * Development helper: opening the deep link `…/--/dev-seed` adds the sample word lists to the current
+ * course and goes back to the home screen. Does nothing in release builds or when there is no course yet.
  */
 export default function DevSeedScreen() {
   const status = useVocabulary((s) => s.status);
+  const noCourse = useCourses((s) => s.status === 'ready' && s.activeCourseId === null);
 
   useEffect(() => {
-    if (status !== 'ready') {
+    if (status !== 'ready' && !noCourse) {
       return;
     }
-    if (__DEV__) {
+    if (__DEV__ && status === 'ready') {
       const store = vocabularyStore.getState();
       const { lists, words } = createSampleLists(
         () => Crypto.randomUUID(),
@@ -32,7 +33,7 @@ export default function DevSeedScreen() {
     } else {
       router.replace('/');
     }
-  }, [status]);
+  }, [status, noCourse]);
 
   return <View />;
 }

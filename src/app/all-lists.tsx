@@ -121,7 +121,9 @@ export default function AllListsScreen() {
           <ListRow
             list={item}
             selection={selected ? { selected: selected.includes(item.id), onToggle: () => toggle(item.id) } : undefined}
-            onLongPress={selected ? undefined : () => toggle(item.id)}
+            // Always set: if it were removed when selection mode starts, lifting the finger after the
+            // long-press would count as a tap and unselect the list again.
+            onLongPress={() => toggle(item.id)}
           />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}

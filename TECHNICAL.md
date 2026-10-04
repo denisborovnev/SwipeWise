@@ -163,13 +163,35 @@ continuity, plus courses). Google Sheets sync (milestones 5–6) is next.
 
 ## Development
 
+The app uses native modules that Expo Go doesn't include (Google Sign-In), so it runs as a
+**development build** (`expo-dev-client`), package `com.swipewise.app`.
+
+**One-time setup**
+- Android Studio with the Android SDK and an emulator that has **Google Play** (needed for Google Sign-In),
+  or a phone with USB debugging.
+- **JDK 21** for the native build. Java 8 is too old, and Java 25 (Android Studio's bundled JBR) breaks the
+  CMake step of some native modules.
+- A `.env` file (git-ignored) with the Google OAuth **Web** client id:
+  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=….apps.googleusercontent.com`
+
+**Build and run**
 ```bash
 npm install
-npm start            # start Metro; scan the QR code with Expo Go on your phone, or press "a" for an emulator
+npx expo run:android        # builds android/ (generated, git-ignored) and installs the app; needs JAVA_HOME = JDK 21
+npx expo start --dev-client # start Metro; open the installed SwipeWise app
+```
+Rebuild with `npx expo run:android` only after adding or upgrading a native module or changing `app.json`;
+JavaScript changes reload instantly.
+
+**Checks**
+```bash
 npm test             # unit tests (Jest)
 npm run typecheck    # TypeScript
 npm run lint         # ESLint
 ```
+
+**Sample data:** in a development build, opening the link `swipewise://dev-seed` adds 10 sample lists
+to the current course (e.g. `adb shell am start -a android.intent.action.VIEW -d swipewise://dev-seed`).
 
 Local data is stored in the app's documents folder under `myvocabulary/`: `courses.json` (the courses and
 the current one) and a folder per course, `courses/<id>/`, with `words.json`, `sessions.json` and `settings.json`.
