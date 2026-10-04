@@ -75,7 +75,7 @@ The actual types are in `src/model/types.ts`.
 
 Local files (in `<documents>/myvocabulary/`):
 - `words.json` – all lists + words
-- `session.json` – current/last session
+- `sessions.json` – the last 5 sessions, most recently used first (replaces `session.json` of earlier versions, which is migrated)
 - `sync-queue.json` – pending remote operations
 - `settings.json` – spreadsheet id, account email, last sync time, preferences
 
@@ -90,6 +90,7 @@ src/
     index.tsx                # Home: "Continue session" / "New session" + word lists
     session/new.tsx          # Filter selection
     session/play.tsx         # Card game
+    session/recent.tsx       # Last 5 sessions
     session/summary.tsx      # Results of the session
     lists/[id].tsx           # Words of a list, rename/delete list
     word.tsx                 # Add / edit word (modal)
@@ -151,6 +152,7 @@ src/
 - [x] Home screen: **Continue** (resume at `currentIndex`), **Restart** (same words, reshuffled, from the first card), **New session**. The word set is only recomputed by **New session**.
 - [x] Words deleted since the session was created are skipped.
 - [x] Session card describes the filter, e.g. "Demo · added since Oct 2, 2026 · don't remember".
+- [x] **Recent sessions**: the last 5 sessions are kept (most recently used first). "Recent" on the home screen lists them; picking one continues it, or restarts it (reshuffled) if it was finished. A new session with the same filter replaces the older one; "repeat the words I missed" rounds are separate entries marked "missed words".
 
 > ✅ After Milestone 4 the app is fully usable offline.
 

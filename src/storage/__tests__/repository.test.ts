@@ -1,12 +1,23 @@
 import { createMemoryBackend } from '../backend';
 import { createDebouncedTask } from '../debounce';
+import type { Session } from '@/model/types';
+
 import { createRepository, FILES } from '../repository';
+
+const session = (id: string): Session => ({
+  id,
+  filter: { listId: 'all' },
+  wordIds: [],
+  currentIndex: 0,
+  history: [],
+  startedAt: 'x',
+});
 
 describe('repository', () => {
   it('returns null / defaults on first launch', async () => {
     const repo = createRepository(createMemoryBackend());
     expect(await repo.loadVocabulary()).toBeNull();
-    expect(await repo.loadSession()).toBeNull();
+    expect(await repo.loadRecentSessions()).toEqual([]);
     expect(await repo.loadSettings()).toEqual({ version: 1 });
   });
 
@@ -26,20 +37,19 @@ describe('repository', () => {
     warn.mockRestore();
   });
 
-  it('deletes the session file when the session is cleared', async () => {
-    const backend = createMemoryBackend();
+  it('round-trips the recent sessions', async () => {
+    const repo = createRepository(createMemoryBackend());
+    await repo.saveRecentSessions([session('S1'), session('S2')]);
+    expect((await repo.loadRecentSessions()).map((s) => s.id)).toEqual(['S1', 'S2']);
+  });
+
+  it('migrates the single session saved by earlier versions', async () => {
+    const backend = createMemoryBackend({ [FILES.legacySession]: JSON.stringify(session('OLD')) });
     const repo = createRepository(backend);
-    await repo.saveSession({
-      id: 'S1',
-      filter: { listId: 'all' },
-      wordIds: [],
-      currentIndex: 0,
-      history: [],
-      startedAt: 'x',
-    });
-    expect(backend.files[FILES.session]).toBeDefined();
-    await repo.saveSession(null);
-    expect(backend.files[FILES.session]).toBeUndefined();
+    expect((await repo.loadRecentSessions()).map((s) => s.id)).toEqual(['OLD']);
+    await repo.saveRecentSessions([session('NEW'), session('OLD')]);
+    expect(backend.files[FILES.legacySession]).toBeUndefined();
+    expect((await repo.loadRecentSessions()).map((s) => s.id)).toEqual(['NEW', 'OLD']);
   });
 });
 

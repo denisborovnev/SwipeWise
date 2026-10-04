@@ -77,6 +77,8 @@ export interface SessionStep {
 export interface Session {
   id: string;
   filter: SessionFilter;
+  /** 'missed' = "repeat the words I missed" round of an earlier session with this filter. */
+  kind?: 'missed';
   /** Frozen (and shuffled) when the session is created; only "New session" picks a new set of words.
    *  Restarting keeps the same words but shuffles them again. */
   wordIds: string[];

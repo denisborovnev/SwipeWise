@@ -10,8 +10,10 @@ import type { LoadStatus, VocabularyState } from './vocabularyStore';
 
 export interface SessionState {
   status: LoadStatus;
-  /** The current or last session; null if none was ever started. */
+  /** The current session (= recent[0]); null if none was ever started. */
   session: Session | null;
+  /** Up to MAX_RECENT_SESSIONS sessions, most recently used first. */
+  recent: Session[];
   /** Filter of the last "New session", offered as the default next time. */
   lastFilter: SessionFilter | null;
 
@@ -22,8 +24,10 @@ export interface SessionState {
   countMatching(filter: SessionFilter): number;
   /** Starts a session with the matching words in random order; returns the number of words (0 = not started). */
   startSession(filter: SessionFilter): number;
-  /** Starts a session with given words, e.g. "repeat the ones I missed". */
-  startWithWords(filter: SessionFilter, wordIds: string[]): void;
+  /** Starts a new session with the words missed in the current one. */
+  repeatMissed(): void;
+  /** Makes a recent session the current one: unfinished ones continue, finished ones start again. */
+  selectSession(sessionId: string): void;
   answer(answer: Answer): void;
   undo(): void;
   /** Same words, shuffled again, from the first card. */
@@ -50,11 +54,13 @@ export function createSessionStore({
   saveDelayMs = 300,
 }: SessionStoreDeps): StoreApi<SessionState> {
   return createStore<SessionState>()((set, get) => {
-    const saver = createDebouncedTask(() => repository.saveSession(get().session), saveDelayMs);
+    const saver = createDebouncedTask(() => repository.saveRecentSessions(get().recent), saveDelayMs);
     const nowIso = () => now().toISOString();
 
+    /** Stores the session as the current one (first in the recent list). */
     const setSession = (session: Session) => {
-      set({ session });
+      const recent = ses.upsertRecent(get().recent, session);
+      set({ recent, session: recent[0] });
       saver.schedule();
     };
 
@@ -69,16 +75,17 @@ export function createSessionStore({
     return {
       status: 'idle',
       session: null,
+      recent: [],
       lastFilter: null,
 
       async load() {
         set({ status: 'loading' });
         try {
-          const [session, settings] = await Promise.all([repository.loadSession(), repository.loadSettings()]);
-          set({ status: 'ready', session, lastFilter: settings.lastFilter ?? null });
+          const [recent, settings] = await Promise.all([repository.loadRecentSessions(), repository.loadSettings()]);
+          set({ status: 'ready', recent, session: recent[0] ?? null, lastFilter: settings.lastFilter ?? null });
         } catch (e) {
-          console.error('Could not load the session', e);
-          set({ status: 'ready', session: null });
+          console.error('Could not load the sessions', e);
+          set({ status: 'ready', recent: [], session: null });
         }
       },
 
@@ -95,8 +102,19 @@ export function createSessionStore({
         return wordIds.length;
       },
 
-      startWithWords(filter, wordIds) {
-        setSession(ses.createSession(newId(), filter, wordIds, nowIso(), random));
+      repeatMissed() {
+        const { session } = get();
+        const wordIds = session ? ses.missedWordIds(session) : [];
+        if (session && wordIds.length > 0) {
+          setSession({ ...ses.createSession(newId(), session.filter, wordIds, nowIso(), random), kind: 'missed' });
+        }
+      },
+
+      selectSession(sessionId) {
+        const session = get().recent.find((s) => s.id === sessionId);
+        if (session) {
+          setSession(ses.isFinished(session) ? ses.restartSession(session, nowIso(), random) : session);
+        }
       },
 
       answer(answer) {

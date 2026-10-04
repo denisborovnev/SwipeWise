@@ -64,6 +64,25 @@ export function restartSession(session: Session, now: string, random: () => numb
   };
 }
 
+/** How many recent sessions are kept. */
+export const MAX_RECENT_SESSIONS = 5;
+
+/** Sessions with the same key are "the same session" in the recent list (same filter and kind). */
+export function sessionKey(session: Session): string {
+  const { listId, addedSince, notRevisedSince, onlyNotRemembered } = session.filter;
+  return JSON.stringify([listId, addedSince ?? null, notRevisedSince ?? null, !!onlyNotRemembered, session.kind ?? null]);
+}
+
+/**
+ * Puts the session first in the recent list (most recently used first). An older entry with the
+ * same id or the same filter is replaced, and the list is capped at MAX_RECENT_SESSIONS.
+ */
+export function upsertRecent(recent: Session[], session: Session): Session[] {
+  const key = sessionKey(session);
+  const others = recent.filter((s) => s.id !== session.id && sessionKey(s) !== key);
+  return [session, ...others].slice(0, MAX_RECENT_SESSIONS);
+}
+
 /** Moves past words that no longer exist (e.g. deleted after the session was created). */
 export function skipMissing(session: Session, exists: (wordId: string) => boolean, now: string): Session {
   let index = session.currentIndex;

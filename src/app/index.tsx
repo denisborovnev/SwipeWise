@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const error = useVocabulary((s) => s.error);
   const data = useVocabulary((s) => s.data);
   const session = useSession((s) => s.session);
+  const recentCount = useSession((s) => s.recent.length);
   const [creating, setCreating] = useState(false);
 
   const lists = useMemo(() => {
@@ -63,13 +64,25 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             {session && <SessionCard session={session} />}
-            <Button
-              title="New session"
-              icon="options-outline"
-              variant={session && !isFinished(session) ? 'secondary' : 'primary'}
-              onPress={() => router.push('/session/new')}
-              disabled={data.words.length === 0}
-            />
+            <View style={styles.sessionButtons}>
+              {recentCount > 1 && (
+                <Button
+                  title="Recent"
+                  icon="time-outline"
+                  variant="secondary"
+                  onPress={() => router.push('/session/recent')}
+                  style={styles.flex}
+                />
+              )}
+              <Button
+                title="New session"
+                icon="options-outline"
+                variant={session && !isFinished(session) ? 'secondary' : 'primary'}
+                onPress={() => router.push('/session/new')}
+                disabled={data.words.length === 0}
+                style={styles.flex}
+              />
+            </View>
             <Text style={[styles.sectionTitle, styles.listsTitle, { color: colors.text }]}>Word lists</Text>
             <Text style={{ color: colors.textSecondary }}>
               {plural(data.lists.length, 'list')} · {plural(data.words.length, 'word')}
@@ -113,6 +126,8 @@ const styles = StyleSheet.create({
   header: { marginBottom: Spacing.sm, gap: Spacing.sm },
   sectionTitle: { fontSize: 20, fontWeight: '700' },
   listsTitle: { marginTop: Spacing.sm },
+  sessionButtons: { flexDirection: 'row', gap: Spacing.sm },
+  flex: { flex: 1 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

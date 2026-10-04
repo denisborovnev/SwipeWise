@@ -51,6 +51,9 @@ Filters can be combined. The resulting list of words is **frozen** for the sessi
   have changed since then.
 - A **Restart session** button goes over the same set of words again from the first card, in a new order.
 - The word set is only recalculated when you explicitly **start a new session** with new filters.
+- **Recent sessions:** the last 5 sessions are kept. Pick any of them to continue it where you stopped
+  (or, if it was finished, to go over it again). Starting a session with the same filters as a recent
+  one replaces it, so the list doesn't fill up with duplicates.
 
 ### Tracking progress
 Every word stores:

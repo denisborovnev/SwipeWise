@@ -96,11 +96,71 @@ describe('sessionStore', () => {
     sessions.getState().startSession({ listId });
     sessions.getState().answer('yes');
     await sessions.getState().flush();
-    expect(backend.files[FILES.session]).toBeDefined();
+    expect(backend.files[FILES.sessions]).toBeDefined();
 
     const reloaded = createSessionStore({ repository, vocabulary, newId: () => 'x' });
     await reloaded.getState().load();
     expect(reloaded.getState().session).toEqual(sessions.getState().session);
+    expect(reloaded.getState().recent).toEqual(sessions.getState().recent);
     expect(reloaded.getState().lastFilter).toEqual({ listId });
+  });
+
+  describe('recent sessions', () => {
+    it('keeps sessions most recently used first and replaces one with the same filter', async () => {
+      const { sessions, listId } = await setup();
+      sessions.getState().startSession({ listId });
+      sessions.getState().startSession({ listId: 'all' });
+      sessions.getState().startSession({ listId }); // same filter as the first one
+      expect(sessions.getState().recent.map((s) => s.filter.listId)).toEqual([listId, 'all']);
+      expect(sessions.getState().session).toBe(sessions.getState().recent[0]);
+    });
+
+    it('keeps at most 5 sessions', async () => {
+      const { sessions } = await setup();
+      for (let days = 0; days < 7; days++) {
+        sessions.getState().startSession({ listId: 'all', addedSince: { days: days + 100 } });
+      }
+      const recent = sessions.getState().recent;
+      expect(recent).toHaveLength(5);
+      expect(recent[0].filter.addedSince).toEqual({ days: 106 });
+    });
+
+    it('selecting an unfinished session continues it where it stopped', async () => {
+      const { sessions, listId } = await setup();
+      sessions.getState().startSession({ listId });
+      sessions.getState().answer('yes');
+      const first = sessions.getState().session!;
+      sessions.getState().startSession({ listId: 'all' });
+
+      sessions.getState().selectSession(first.id);
+      expect(sessions.getState().session).toEqual(first);
+      expect(sessions.getState().recent.map((s) => s.id)).toEqual([first.id, expect.any(String)]);
+    });
+
+    it('selecting a finished session starts it again', async () => {
+      const { sessions, listId, ids } = await setup();
+      sessions.getState().startSession({ listId });
+      ids.forEach(() => sessions.getState().answer('yes'));
+      const finishedId = sessions.getState().session!.id;
+      sessions.getState().startSession({ listId: 'all' });
+
+      sessions.getState().selectSession(finishedId);
+      expect(sessions.getState().session).toMatchObject({ id: finishedId, currentIndex: 0, history: [] });
+      expect(sessions.getState().session?.finishedAt).toBeUndefined();
+    });
+
+    it('"repeat missed" adds a separate session with the missed words', async () => {
+      const { sessions, listId, ids } = await setup();
+      sessions.getState().startSession({ listId });
+      sessions.getState().answer('no');
+      sessions.getState().answer('yes');
+      sessions.getState().answer('no');
+      sessions.getState().repeatMissed();
+
+      const [missed, original] = sessions.getState().recent;
+      expect(missed).toMatchObject({ kind: 'missed', filter: { listId } });
+      expect([...missed.wordIds].sort()).toEqual([ids[0], ids[2]].sort());
+      expect(original.filter).toEqual({ listId });
+    });
   });
 });

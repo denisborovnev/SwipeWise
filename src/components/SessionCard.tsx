@@ -5,8 +5,7 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import { isFinished, sessionStats } from '@/model/session';
 import type { Session } from '@/model/types';
 import { sessionStore, useVocabulary } from '@/store';
-import { describeFilter } from '@/utils/describeFilter';
-import { plural } from '@/utils/format';
+import { describeProgress, describeSession } from '@/utils/describeFilter';
 
 import { Button } from './Button';
 
@@ -31,12 +30,8 @@ export function SessionCard({ session }: { session: Session }) {
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       <Text style={[styles.label, { color: colors.textSecondary }]}>{finished ? 'Last session' : 'Current session'}</Text>
-      <Text style={[styles.title, { color: colors.text }]}>{describeFilter(session.filter, lists)}</Text>
-      <Text style={{ color: colors.textSecondary }}>
-        {finished
-          ? `Finished · knew ${stats.remembered}, didn't know ${stats.notRemembered}`
-          : `${stats.answered} of ${plural(stats.total, 'card')} done`}
-      </Text>
+      <Text style={[styles.title, { color: colors.text }]}>{describeSession(session, lists)}</Text>
+      <Text style={{ color: colors.textSecondary }}>{describeProgress(session)}</Text>
       {!finished && (
         <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
           <View

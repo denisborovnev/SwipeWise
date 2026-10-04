@@ -7,3 +7,8 @@ export function plural(count: number, singular: string, pluralForm = `${singular
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+/** Short local date and time, e.g. "4 Oct, 22:15". */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}

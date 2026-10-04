@@ -5,7 +5,10 @@ import type { StorageBackend } from './backend';
 
 export const FILES = {
   vocabulary: 'words.json',
-  session: 'session.json',
+  /** Recent sessions, most recently used first. */
+  sessions: 'sessions.json',
+  /** Single session saved by earlier versions; migrated to sessions.json. */
+  legacySession: 'session.json',
   settings: 'settings.json',
 } as const;
 
@@ -13,8 +16,9 @@ export interface Repository {
   /** Returns null when nothing has been saved yet (first launch). */
   loadVocabulary(): Promise<VocabularyData | null>;
   saveVocabulary(data: VocabularyData): Promise<void>;
-  loadSession(): Promise<Session | null>;
-  saveSession(session: Session | null): Promise<void>;
+  /** Recent sessions, most recently used first (empty if none). */
+  loadRecentSessions(): Promise<Session[]>;
+  saveRecentSessions(sessions: Session[]): Promise<void>;
   loadSettings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<void>;
 }
@@ -48,9 +52,18 @@ export function createRepository(backend: StorageBackend): Repository {
     },
     saveVocabulary: (data) => writeJson(backend, FILES.vocabulary, data),
 
-    loadSession: () => readJson<Session>(backend, FILES.session),
-    saveSession: (session) =>
-      session ? writeJson(backend, FILES.session, session) : backend.delete(FILES.session),
+    async loadRecentSessions() {
+      const data = await readJson<{ version: 1; sessions: Session[] }>(backend, FILES.sessions);
+      if (data) {
+        return data.sessions;
+      }
+      const legacy = await readJson<Session>(backend, FILES.legacySession);
+      return legacy ? [legacy] : [];
+    },
+    async saveRecentSessions(sessions) {
+      await writeJson(backend, FILES.sessions, { version: 1, sessions });
+      await backend.delete(FILES.legacySession);
+    },
 
     async loadSettings() {
       return (await readJson<Settings>(backend, FILES.settings)) ?? { version: 1 };

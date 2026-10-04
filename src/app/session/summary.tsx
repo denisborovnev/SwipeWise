@@ -22,7 +22,7 @@ export default function SummaryScreen() {
   const missed = missedIds.flatMap((id) => words.filter((w) => w.id === id));
 
   const repeatMissed = () => {
-    sessionStore.getState().startWithWords(session.filter, missedIds);
+    sessionStore.getState().repeatMissed();
     router.replace('/session/play');
   };
 

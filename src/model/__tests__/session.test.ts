@@ -1,4 +1,5 @@
 import * as ses from '../session';
+import type { Session } from '../types';
 
 const T = '2026-10-10T10:00:00.000Z';
 const NEVER = { lastRevisedAt: null, remembered: null };
@@ -75,5 +76,33 @@ describe('session', () => {
     const done = ses.skipMissing(s, () => false, T);
     expect(ses.isFinished(done)).toBe(true);
     expect(done.finishedAt).toBe(T);
+  });
+});
+
+describe('upsertRecent', () => {
+  const make = (id: string, listId: string, kind?: 'missed') => ({ ...ses.createSession(id, { listId }, [], T, KEEP_ORDER), kind });
+
+  it('puts the session first and replaces the entry with the same id', () => {
+    const a = make('A', 'L1');
+    const b = make('B', 'L2');
+    const recent = ses.upsertRecent(ses.upsertRecent([], a), b);
+    expect(ses.upsertRecent(recent, { ...a, currentIndex: 1 }).map((s) => [s.id, s.currentIndex])).toEqual([
+      ['A', 1],
+      ['B', 0],
+    ]);
+  });
+
+  it('replaces an older session with the same filter and kind', () => {
+    const recent = [make('A', 'L1'), make('B', 'L1', 'missed')];
+    expect(ses.upsertRecent(recent, make('C', 'L1')).map((s) => s.id)).toEqual(['C', 'B']);
+    expect(ses.upsertRecent(recent, make('D', 'L1', 'missed')).map((s) => s.id)).toEqual(['D', 'A']);
+  });
+
+  it('keeps at most MAX_RECENT_SESSIONS', () => {
+    let recent: Session[] = [];
+    for (let i = 0; i < 8; i++) {
+      recent = ses.upsertRecent(recent, make(`S${i}`, `L${i}`));
+    }
+    expect(recent.map((s) => s.id)).toEqual(['S7', 'S6', 'S5', 'S4', 'S3']);
   });
 });
