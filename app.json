@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MyVocabulary",
-    "slug": "myvocabulary",
+    "name": "SwipeWise",
+    "slug": "swipewise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myvocabulary",
+    "scheme": "swipewise",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.myvocabulary.app"
+      "package": "com.swipewise.app"
     },
     "web": {
       "output": "static",

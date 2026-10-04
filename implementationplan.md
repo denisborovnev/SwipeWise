@@ -1,4 +1,4 @@
-# Implementation Plan – MyVocabulary
+# Implementation Plan – SwipeWise
 
 The plan is split into milestones. Each milestone ends with a working, testable app.
 Milestones 1–4 deliver a complete **offline** app; milestones 5–6 add Google Sheets on top
@@ -172,8 +172,8 @@ src/
 - [ ] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
 - [ ] Settings screen: **Connect Google Sheets**:
   1. Sign in.
-  2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false` (with `drive.file` it returns only app-created files). Also store the spreadsheet id in the file's `appProperties` (`myvocabulary=1`) to recognise it reliably.
-  3. Found → reconnect to it (if several, let the user pick). Not found → **create** a new spreadsheet "MyVocabulary" (`spreadsheets.create`).
+  2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false` (with `drive.file` it returns only app-created files). Also store the spreadsheet id in the file's `appProperties` (`swipewise=1`) to recognise it reliably.
+  3. Found → reconnect to it (if several, let the user pick). Not found → **create** a new spreadsheet "SwipeWise" (`spreadsheets.create`).
   4. Show an "Open in Google Sheets" link (`https://docs.google.com/spreadsheets/d/<id>`).
   - Disconnect is also available (keeps local data, stops syncing).
 - [ ] `sheetsApi.ts`: `createSpreadsheet`, `getSpreadsheet` (tabs), `batchGetValues`, `appendValues`, `batchUpdateValues`, `batchUpdate` (`addSheet`, `updateSheetProperties` for rename, `insertDimension` for header row); `driveApi.ts`: `listAppSpreadsheets`.

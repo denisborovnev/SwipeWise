@@ -36,7 +36,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
-          <Stack.Screen name="index" options={{ title: 'MyVocabulary' }} />
+          <Stack.Screen name="index" options={{ title: 'SwipeWise' }} />
           <Stack.Screen name="all-lists" options={{ title: 'All lists' }} />
           <Stack.Screen name="lists/[id]" options={{ title: '' }} />
           <Stack.Screen name="dev-seed" options={{ title: '' }} />

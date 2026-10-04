@@ -1,4 +1,4 @@
-# MyVocabulary
+# SwipeWise
 
 An Android app (React Native) for growing your foreign-language vocabulary with flashcards.
 Your word lists live in a single Google Spreadsheet that you can edit directly, but the app
@@ -68,7 +68,7 @@ Every word stores:
 - **Offline first.** All data is kept in a local cache on the device file system. The app is fully
   usable without any spreadsheet connected.
 - **Google Sheets (optional).** A single spreadsheet document is the "source of truth" when connected:
-  - The **app creates the spreadsheet** ("MyVocabulary") in your Google Drive when you connect.
+  - The **app creates the spreadsheet** ("SwipeWise") in your Google Drive when you connect.
     After that you can open and edit it in Google Sheets like any other spreadsheet.
   - The app can access **only this one file** (plus any other file it created) – not the rest of your
     Google Drive or your other spreadsheets.
