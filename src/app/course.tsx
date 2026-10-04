@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { GoogleSheetsSection } from '@/components/GoogleSheetsSection';
 import { LanguagePickerModal } from '@/components/LanguagePickerModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { defaultCourseName, findLanguage, languageName } from '@/model/languages';
 import { validateCourseName } from '@/model/validation';
-import { courseStore, createCourse, deleteCourse, useCourses } from '@/store';
+import { courseStore, createCourse, deleteCourse, updateCourseSpreadsheet, useCourses } from '@/store';
 import { MIGRATED_COURSE_NAME } from '@/store/courseStore';
 
 /** Create a course (no `id`) or edit one: the language being learned and the course name. */
@@ -60,6 +61,7 @@ export default function CourseScreen() {
     try {
       if (isEdit) {
         await courseStore.getState().updateCourse(id, { name, language });
+        updateCourseSpreadsheet(id);
         router.back();
       } else {
         await createCourse({ name, language });
@@ -130,6 +132,8 @@ export default function CourseScreen() {
           )}
           <Button title={isEdit ? 'Save' : 'Create course'} onPress={save} disabled={saving} style={styles.flex} />
         </View>
+
+        {course && <GoogleSheetsSection course={course} />}
       </ScrollView>
 
       <LanguagePickerModal

@@ -1,10 +1,20 @@
 import * as Crypto from 'expo-crypto';
 import { useStore } from 'zustand';
+import { createStore } from 'zustand/vanilla';
 
+import { createGoogleAuth } from '@/auth/google';
+import { markUploaded } from '@/model/vocabulary';
 import { createCoursesRepository } from '@/storage/courses';
 import { createFileBackend } from '@/storage/fileBackend';
+import { appProperties, connectCourse } from '@/sync/connect';
+import { createGoogleApi } from '@/sync/googleApi';
+import { createGoogleClient } from '@/sync/googleClient';
+import { mergePull } from '@/sync/mergePull';
+import { readSpreadsheet, writeFixes } from '@/sync/pull';
+import { spreadsheetTitle } from '@/sync/sheetFormat';
 
 import { createCourseStore, type CourseState } from './courseStore';
+import { createGoogleAccountStore, type GoogleAccountState } from './googleStore';
 import { createSessionStore, type SessionState } from './sessionStore';
 import { createVocabularyStore, type VocabularyState } from './vocabularyStore';
 
@@ -18,6 +28,30 @@ export const courseStore = createCourseStore({ repository: coursesRepository, ne
 export const vocabularyStore = createVocabularyStore({ newId });
 
 export const sessionStore = createSessionStore({ vocabulary: vocabularyStore, newId });
+
+const googleAuth = createGoogleAuth();
+const googleApi = createGoogleApi(createGoogleClient(googleAuth));
+
+/** The signed-in Google account (app-wide). */
+export const googleAccountStore = createGoogleAccountStore(googleAuth);
+
+export function useGoogleAccount<T>(selector: (state: GoogleAccountState) => T): T {
+  return useStore(googleAccountStore, selector);
+}
+
+export interface SyncState {
+  /** Course being synced / last synced. */
+  courseId: string | null;
+  status: 'idle' | 'syncing' | 'error';
+  error?: string;
+}
+
+/** Sync status of the current course (shown as the cloud icon and on the course screen). */
+export const syncStore = createStore<SyncState>()(() => ({ courseId: null, status: 'idle' }));
+
+export function useSync<T>(selector: (state: SyncState) => T): T {
+  return useStore(syncStore, selector);
+}
 
 export function useCourses<T>(selector: (state: CourseState) => T): T {
   return useStore(courseStore, selector);
@@ -44,10 +78,14 @@ async function openActiveCourse() {
 }
 
 export async function loadAll() {
+  // Restoring the Google sign-in doesn't block the app; it works offline without it.
+  const restoring = googleAccountStore.getState().restore();
   await courseStore.getState().load();
   if (courseStore.getState().status === 'ready') {
     await openActiveCourse();
   }
+  // The cached words are shown right away; the spreadsheet is read in the background.
+  restoring.then(() => syncActiveCourse());
 }
 
 export async function switchCourse(courseId: string) {
@@ -59,6 +97,7 @@ export async function switchCourse(courseId: string) {
   const saved = courseStore.getState().setActive(courseId);
   await openActiveCourse();
   await saved;
+  syncActiveCourse();
 }
 
 /** Creates a course and makes it the current one. */
@@ -94,6 +133,98 @@ export function mergeLists(listIds: string[], name: string): string {
   vocabularyStore.getState().mergeLists(target.id, sources, name);
   sessionStore.getState().replaceLists(sources, target.id);
   return target.id;
+}
+
+/**
+ * Connects a course to Google Sheets (signing in first if needed): reconnects to the spreadsheet created
+ * for it earlier or creates one with all its lists. Returns null if the user cancelled the sign-in.
+ */
+export async function connectGoogleSheets(courseId: string): Promise<{ created: boolean } | null> {
+  if (!googleAccountStore.getState().email && !(await googleAccountStore.getState().signIn())) {
+    return null;
+  }
+  const course = courseStore.getState().courses.find((c) => c.id === courseId);
+  if (!course) {
+    throw new Error('The course no longer exists');
+  }
+  await flushAll();
+  const active = courseStore.getState().activeCourseId === courseId;
+  const repository = coursesRepository.courseRepository(courseId);
+  const data = active ? vocabularyStore.getState().data : await repository.loadVocabulary();
+
+  const result = await connectCourse(googleApi, course, data ?? { version: 1, lists: [], words: [] });
+
+  if (result.created) {
+    if (active) {
+      vocabularyStore.getState().markUploaded(result.listSheetIds, result.uploaded);
+    } else if (data) {
+      await repository.saveVocabulary(markUploaded(data, result.listSheetIds, result.uploaded));
+    }
+  }
+  await courseStore.getState().updateCourse(courseId, {
+    spreadsheetId: result.spreadsheetId,
+    lastSyncAt: result.created ? new Date().toISOString() : undefined,
+  });
+  if (!result.created) {
+    // Reconnected to an earlier spreadsheet: bring its words in.
+    await syncActiveCourse();
+  }
+  return { created: result.created };
+}
+
+/**
+ * Reads the current course's spreadsheet and merges it into the words on the phone (new rows, edits,
+ * new / renamed / deleted tabs), then writes back the fixes for rows and tabs added by hand (Id, Added,
+ * header, date in the tab name). Does nothing if the course isn't connected or nobody is signed in.
+ * Errors are kept in `syncStore` (e.g. offline) – the words on the phone stay as they are.
+ */
+export async function syncActiveCourse(): Promise<void> {
+  const courseId = courseStore.getState().activeCourseId;
+  const course = courseStore.getState().courses.find((c) => c.id === courseId);
+  const sync = syncStore.getState();
+  if (!course?.spreadsheetId || !googleAccountStore.getState().email) {
+    return;
+  }
+  if (sync.status === 'syncing' && sync.courseId === course.id) {
+    return;
+  }
+  syncStore.setState({ courseId: course.id, status: 'syncing', error: undefined });
+  try {
+    const tabs = await readSpreadsheet(googleApi, course.spreadsheetId);
+    // Merge into the data as it is now (the user may have changed something while we were reading).
+    if (courseStore.getState().activeCourseId !== course.id || vocabularyStore.getState().status !== 'ready') {
+      syncStore.setState({ status: 'idle' });
+      return;
+    }
+    const result = mergePull(vocabularyStore.getState().data, tabs, new Date().toISOString(), newId);
+    vocabularyStore.getState().applyPull(result.data);
+    sessionStore.getState().skipMissing();
+    await writeFixes(googleApi, course.spreadsheetId, result.fixes);
+    await courseStore.getState().updateCourse(course.id, { lastSyncAt: new Date().toISOString() });
+    syncStore.setState({ status: 'idle' });
+  } catch (e) {
+    console.warn('Sync failed', e);
+    syncStore.setState({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** Stops syncing a course; its words stay on the phone and the spreadsheet stays in Drive. */
+export async function disconnectGoogleSheets(courseId: string) {
+  await courseStore.getState().updateCourse(courseId, { spreadsheetId: undefined });
+}
+
+/** Keeps a connected course's spreadsheet name and tags in line with the course (best effort). */
+export async function updateCourseSpreadsheet(courseId: string) {
+  const course = courseStore.getState().courses.find((c) => c.id === courseId);
+  if (!course?.spreadsheetId || !googleAccountStore.getState().email) {
+    return;
+  }
+  try {
+    await googleApi.renameFile(course.spreadsheetId, spreadsheetTitle(course.name));
+    await googleApi.setAppProperties(course.spreadsheetId, appProperties(course));
+  } catch (e) {
+    console.warn('Could not update the spreadsheet of the course', e);
+  }
 }
 
 /** Writes all pending changes to disk (e.g. when the app goes to background). */

@@ -9,6 +9,7 @@ import type { LoadStatus } from './vocabularyStore';
 export const MIGRATED_COURSE_NAME = 'My course';
 
 export type CourseInput = Pick<Course, 'name' | 'language'>;
+export type CoursePatch = Partial<Pick<Course, 'name' | 'language' | 'spreadsheetId' | 'lastSyncAt'>>;
 
 export interface CourseState {
   status: LoadStatus;
@@ -20,7 +21,7 @@ export interface CourseState {
   load(): Promise<void>;
   /** Creates a course (doesn't switch to it) and returns its id. */
   addCourse(input: CourseInput): Promise<string>;
-  updateCourse(courseId: string, patch: Partial<CourseInput>): Promise<void>;
+  updateCourse(courseId: string, patch: CoursePatch): Promise<void>;
   /** Removes the course and its files; another course becomes the current one if needed. */
   deleteCourse(courseId: string): Promise<void>;
   setActive(courseId: string): Promise<void>;

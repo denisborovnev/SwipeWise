@@ -22,6 +22,7 @@ describe('vocabulary', () => {
       lastRevisedAt: null,
       remembered: null,
       dirty: true,
+      contentDirty: true,
       updatedAt: T0,
     });
   });
@@ -96,5 +97,28 @@ describe('vocabulary', () => {
       { front: 'car', back: 'машина' },
     ];
     expect(voc.countDuplicates(words)).toBe(2);
+  });
+
+  it('remembers deleted words and synced tabs for the next push', () => {
+    let d = voc.addList(withList(), 'L2', 'Food', T0);
+    d = { ...d, lists: d.lists.map((l) => (l.id === 'L1' ? { ...l, sheetId: 7 } : l)) };
+    d = voc.addWord(d, 'W1', 'L1', { front: 'a', back: 'A' }, T0);
+    d = voc.addWord(d, 'W2', 'L2', { front: 'b', back: 'B' }, T0);
+    d = voc.deleteWord(d, 'W2');
+    d = voc.deleteList(d, 'L1');
+    expect(d.deleted).toEqual({ wordIds: ['W2', 'W1'], sheetIds: [7] });
+  });
+
+  it('marks renamed lists and edited words as changed locally', () => {
+    let d = voc.addWord(withList(), 'W1', 'L1', { front: 'a', back: 'A' }, T0);
+    d = voc.markUploaded(d, { L1: 7 }, [{ id: 'W1', updatedAt: T0 }]);
+    expect(d.words[0]).toMatchObject({ dirty: false, contentDirty: false });
+    expect(d.lists[0]).toMatchObject({ sheetId: 7, dirty: false });
+
+    d = voc.recordAnswer(d, 'W1', 'yes', T1);
+    expect(d.words[0]).toMatchObject({ dirty: true, contentDirty: false });
+    d = voc.updateWord(d, 'W1', { back: 'AA' }, T1);
+    expect(d.words[0]).toMatchObject({ dirty: true, contentDirty: true });
+    expect(voc.renameList(d, 'L1', 'Trips').lists[0].dirty).toBe(true);
   });
 });

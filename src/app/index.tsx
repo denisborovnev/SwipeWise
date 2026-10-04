@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Footer } from '@/components/Footer';
@@ -12,7 +12,7 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
 import type { Course } from '@/model/types';
-import { useCourses, useSession, useVocabulary } from '@/store';
+import { useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
 import { plural } from '@/utils/format';
 
 /** How many of the newest lists the home screen shows; the rest are under "All lists". */
@@ -52,7 +52,12 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen options={{ headerTitle: () => <CourseTitle course={course} /> }} />
+      <Stack.Screen
+        options={{
+          headerTitle: () => <CourseTitle course={course} />,
+          headerRight: () => <SyncIcon course={course} />,
+        }}
+      />
       <FlatList
         contentContainerStyle={styles.content}
         data={newestLists}
@@ -125,6 +130,34 @@ function CourseTitle({ course }: { course: Course }) {
         {course.name}
       </Text>
       <Ionicons name="chevron-down" size={18} color={colors.text} />
+    </Pressable>
+  );
+}
+
+/** Sync status of a connected course; opens the course screen (Google Sheets section). */
+function SyncIcon({ course }: { course: Course }) {
+  const colors = useThemeColors();
+  const signedIn = useGoogleAccount((s) => s.email !== null);
+  const sync = useSync((s) => (s.courseId === course.id ? s.status : 'idle'));
+  if (!course.spreadsheetId) {
+    return null;
+  }
+  const problem = sync === 'error' || !signedIn;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={sync === 'syncing' ? 'Syncing' : problem ? 'Sync problem' : 'Synced with Google Sheets'}
+      hitSlop={8}
+      onPress={() => router.push({ pathname: '/course', params: { id: course.id } })}>
+      {sync === 'syncing' ? (
+        <ActivityIndicator color={colors.textSecondary} />
+      ) : (
+        <Ionicons
+          name={problem ? 'cloud-offline-outline' : 'cloud-done-outline'}
+          size={24}
+          color={problem ? colors.danger : colors.textSecondary}
+        />
+      )}
     </Pressable>
   );
 }

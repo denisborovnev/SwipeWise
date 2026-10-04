@@ -203,17 +203,17 @@ src/
 - [x] Google Cloud project: **Sheets API** and **Drive API** enabled; OAuth consent screen (External, Testing mode, the user as test user, scope `drive.file`); OAuth clients:
   - **Web** client – its id is passed to the sign-in library (`webClientId`); kept in `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (git-ignored, not in the source).
   - **Android** client – package `com.swipewise.app` + SHA-1 of the debug keystore (the standard React Native debug key, stable across `prebuild`). Not referenced in the app; Google matches it by package + signature. A release keystore needs its SHA-1 added later (Milestone 7).
-- [ ] Emulator: the AVD has Google Play; the user signs in to the test Google account in Android settings.
-- [ ] Scope: **`https://www.googleapis.com/auth/drive.file`** only – the app can access just the files it created itself. It is a *non-sensitive* scope (no Google verification needed, simple consent screen). The Sheets API works with this scope for app-created spreadsheets.
-- [ ] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
-- [ ] **One spreadsheet per course.** The Google account is app-wide (sign in once); each course is connected to its own spreadsheet, stored in the course's `settings.json`.
-- [ ] Every app-created spreadsheet is tagged with Drive `appProperties`: `swipewise=1`, `courseId=<id>`, `language=<code>`, so the app can tell which spreadsheet belongs to which course.
-- [ ] **UI**
+- [x] Emulator: the AVD has Google Play; the user signs in to the test Google account in Android settings.
+- [x] Scope: **`https://www.googleapis.com/auth/drive.file`** only – the app can access just the files it created itself. It is a *non-sensitive* scope (no Google verification needed, simple consent screen). The Sheets API works with this scope for app-created spreadsheets.
+- [x] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
+- [x] **One spreadsheet per course.** The Google account is app-wide (sign in once); each course is connected to its own spreadsheet; its id (and the last sync time) is stored on the course in `courses.json`.
+- [x] Every app-created spreadsheet is tagged with Drive `appProperties`: `swipewise=1`, `courseId=<id>`, `language=<code>`, so the app can tell which spreadsheet belongs to which course.
+- [ ] **UI** (done: course screen section with Connect / Sync now / Last synced / Open / Disconnect, home cloud icon, account line + Sign out on the Courses screen, cloud icon on connected courses; open: syncing / error state on the Courses rows)
   - **Courses screen:** each course row shows its sync status icon (☁️✓ synced, ☁️↻ syncing, ☁️✕ error / offline – tap for details, no icon = not connected). Footer: "Signed in as … · Sign out" (app-wide Google account).
   - **Course screen** (✏️) gets a **Google Sheets** section: not connected → **Connect Google Sheets**; connected → **Open in Google Sheets**, **Sync now**, "Last synced 2 min ago", **Disconnect** (keeps the words on the phone, stops syncing).
   - **Home screen:** small cloud status icon in the header for the current course (tap → course screen).
   - **Restore:** if Drive has app-created spreadsheets that no local course uses, the Courses screen offers **Restore N courses from Google Drive**.
-- [ ] **Connect Google Sheets** (course screen):
+- [x] **Connect Google Sheets** (course screen):
   1. Sign in (if not signed in yet).
   2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and appProperties has { key='swipewise' and value='1' }` (with `drive.file` it returns only app-created files).
   3. A spreadsheet with this course's `courseId` → reconnect to it. Otherwise **create** a new spreadsheet "SwipeWise – <course name>" (`spreadsheets.create`, then set the `appProperties`).
@@ -221,26 +221,28 @@ src/
   - Disconnect is also available (keeps local data, stops syncing).
   - Renaming a course renames its spreadsheet (Drive `files.update`); deleting a course leaves the spreadsheet in Drive.
 - [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
-- [ ] `sheetsApi.ts`: `createSpreadsheet`, `getSpreadsheet` (tabs), `batchGetValues`, `appendValues`, `batchUpdateValues`, `batchUpdate` (`addSheet`, `updateSheetProperties` for rename, `insertDimension` for header row); `driveApi.ts`: `listAppSpreadsheets`.
-- [ ] `mapper.ts`:
+- [x] `sync/googleClient.ts` (fetch with the access token, retry once on 401) and `sync/googleApi.ts`: `listAppSpreadsheets`, `createSpreadsheet`, `writeValues`, `setAppProperties`, `renameFile`, `getTabs`, `readValues`, `batchUpdate`.
+- [x] `sync/sheetFormat.ts` / `sync/parseTab.ts`:
   - header-based column mapping (columns are found by name, case-insensitive, so the user may reorder them);
   - examples newline join/split, date formatting.
-- [ ] **Tab parsing** (on every pull, in memory; the resulting fixes are written right after the pull – see *Normalisation*):
+- [x] **Tab parsing** (on every pull, in memory; the resulting fixes are written right after the pull – see *Normalisation*):
   - **Header detection:** if row 1 contains `Front` and `Back` (case-insensitive) → it is the header; columns are mapped by name. Otherwise there is no header: all rows are words with the default layout A = Front, B = Back, C = Examples, and the tab is marked `needsHeader`.
   - Missing system columns (`Added`, `LastRevised`, `Remembered`, `Id`) → tab is marked `needsColumns`; they will be appended to the right.
   - Rows with Front/Back but no `Id` → hand-added words: generate `Id`, set `Added = now`, leave `LastRevised`/`Remembered` empty; mark the row `needsSystemCells`. Until the `Id` is written, the row is matched by tab + row content (Front+Back).
   - Completely empty rows are skipped; rows with only Front or only Back are flagged as incomplete (shown in the app, not used in sessions).
-- [ ] **List creation date in the tab name**: tabs are named `<list name> - YYYY-MM-DD` (e.g. `Travel - 2026-10-04`); the app shows "Travel" and uses the date as the list's `createdAt`.
+- [x] **List creation date in the tab name**: tabs are named `<list name> - YYYY-MM-DD` (e.g. `Travel - 2026-10-04`); the app shows "Travel" and uses the date as the list's `createdAt`.
   - Tab without a date suffix (created by hand) → the list gets today's date when the app first sees it, and the tab is renamed right after the pull.
   - Date removed by hand → treated like a tab without a date (dated today); date changed by hand → the app takes the new date.
   - List names are limited to 87 characters so that name + " - YYYY-MM-DD" fits the 100-character tab name limit (already enforced).
   - Display names stay unique even if the dates differ.
-- [ ] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
-- [ ] **Tab size:** tabs are created with just the rows and the 7 columns they need (`addSheet` with `gridProperties`), and rows are appended as words are added. A default tab (1000 × 26 = 26,000 cells) would waste the spreadsheet's 10-million-cell budget.
+- [x] **Normalisation right after the pull** – the fixes found while parsing (header rows, missing system columns, `Id` / `Added` of hand-added rows, date suffix of tab names) are written in **one batch immediately after the pull**, so hand-added rows get their `Id` quickly and can't be mismatched. Order: insert header row → append missing system columns → write system cells → rename tabs. If it fails (offline), the fixes are recomputed on the next pull.
+- [x] **Tab size:** tabs are created with just the rows and the 7 columns they need (`addSheet` with `gridProperties`), and rows are appended as words are added. A default tab (1000 × 26 = 26,000 cells) would waste the spreadsheet's 10-million-cell budget.
 - [ ] **Tab limit note:** when a course's spreadsheet gets close to the tab limit (~180 tabs), the course screen shows a note: "The spreadsheet is getting full (180 of ~200 tabs). Merge older lists to make room." No automatic action.
-- [ ] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The default empty `Sheet1` tab is renamed/reused for the first list. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
+- [x] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The spreadsheet is created with its tabs (no empty `Sheet1`), plus an `_SwipeWise` info tab explaining the format. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
+Done so far: **pull** (`sync/mergePull.ts`, `syncActiveCourse` in `store/index.ts`) on app start, course switch, connect and **Sync now**; local bookkeeping for the push (`contentDirty` on words, `dirty` on renamed lists, `deleted` word ids / tab ids). Open: the **push**, pull on return from background, pull-to-refresh.
+
 Only the **current course** is synced (another course is synced when the user switches to it).
 
 **Pull (sheet → app):**

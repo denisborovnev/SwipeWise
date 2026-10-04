@@ -19,17 +19,35 @@ export function addList(data: VocabularyData, id: string, name: string, now: str
 export function renameList(data: VocabularyData, listId: string, name: string): VocabularyData {
   return {
     ...data,
-    lists: data.lists.map((l) => (l.id === listId ? { ...l, name: name.trim() } : l)),
+    lists: data.lists.map((l) => (l.id === listId ? { ...l, name: name.trim(), dirty: true } : l)),
+  };
+}
+
+/** Remembers deleted words / tabs, so a pull doesn't bring them back before the deletion is pushed. */
+function withDeleted(data: VocabularyData, wordIds: string[], sheetIds: number[]): VocabularyData {
+  if (wordIds.length === 0 && sheetIds.length === 0) {
+    return data;
+  }
+  const deleted = data.deleted ?? { wordIds: [], sheetIds: [] };
+  return {
+    ...data,
+    deleted: { wordIds: [...deleted.wordIds, ...wordIds], sheetIds: [...deleted.sheetIds, ...sheetIds] },
   };
 }
 
 /** Removes the list together with all its words. */
 export function deleteList(data: VocabularyData, listId: string): VocabularyData {
-  return {
+  const list = data.lists.find((l) => l.id === listId);
+  const next = {
     ...data,
     lists: data.lists.filter((l) => l.id !== listId),
     words: data.words.filter((w) => w.listId !== listId),
   };
+  return withDeleted(
+    next,
+    data.words.filter((w) => w.listId === listId).map((w) => w.id),
+    list?.sheetId !== undefined ? [list.sheetId] : [],
+  );
 }
 
 export function addWord(
@@ -52,6 +70,7 @@ export function addWord(
     lastRevisedAt: null,
     remembered: null,
     dirty: true,
+    contentDirty: true,
     updatedAt: now,
   };
   return { ...data, words: [...data.words, word] };
@@ -69,12 +88,13 @@ export function updateWord(data: VocabularyData, wordId: string, patch: WordPatc
     back: patch.back !== undefined ? patch.back.trim() : w.back,
     examples: patch.examples !== undefined ? normalizeExamples(patch.examples) : w.examples,
     dirty: true,
+    contentDirty: true,
     updatedAt: now,
   }));
 }
 
 export function deleteWord(data: VocabularyData, wordId: string): VocabularyData {
-  return { ...data, words: data.words.filter((w) => w.id !== wordId) };
+  return withDeleted({ ...data, words: data.words.filter((w) => w.id !== wordId) }, [wordId], []);
 }
 
 export function recordAnswer(data: VocabularyData, wordId: string, answer: Answer, now: string): VocabularyData {
@@ -121,13 +141,19 @@ export function mergeLists(
   now: string,
 ): VocabularyData {
   const sources = new Set(sourceListIds.filter((id) => id !== targetListId));
-  return {
+  const target = data.lists.find((l) => l.id === targetListId);
+  const merged = {
     ...data,
     lists: data.lists
       .filter((l) => !sources.has(l.id))
-      .map((l) => (l.id === targetListId ? { ...l, name: name.trim() } : l)),
-    words: data.words.map((w) => (sources.has(w.listId) ? { ...w, listId: targetListId, dirty: true, updatedAt: now } : w)),
+      .map((l) => (l.id === targetListId ? { ...l, name: name.trim(), dirty: l.dirty || name.trim() !== target?.name } : l)),
+    words: data.words.map((w) =>
+      sources.has(w.listId) ? { ...w, listId: targetListId, dirty: true, contentDirty: true, updatedAt: now } : w,
+    ),
   };
+  // The source tabs go away; their words now belong to the target tab.
+  const sheetIds = data.lists.filter((l) => sources.has(l.id) && l.sheetId !== undefined).map((l) => l.sheetId!);
+  return withDeleted(merged, [], sheetIds);
 }
 
 /** Number of words that have the same front and back as an earlier word (case-insensitive). */
@@ -142,4 +168,23 @@ export function countDuplicates(words: Pick<Word, 'front' | 'back'>[]): number {
     seen.add(key);
   }
   return duplicates;
+}
+
+/**
+ * After words were written to the spreadsheet: remembers the lists' tab ids and clears `dirty` of the
+ * uploaded words – unless a word changed again meanwhile (its `updatedAt` differs from the uploaded one).
+ */
+export function markUploaded(
+  data: VocabularyData,
+  listSheetIds: Record<string, number>,
+  uploaded: { id: string; updatedAt: string }[],
+): VocabularyData {
+  const uploadedAt = new Map(uploaded.map((w) => [w.id, w.updatedAt]));
+  return {
+    ...data,
+    lists: data.lists.map((l) => (l.id in listSheetIds ? { ...l, sheetId: listSheetIds[l.id], dirty: false } : l)),
+    words: data.words.map((w) =>
+      w.dirty && uploadedAt.get(w.id) === w.updatedAt ? { ...w, dirty: false, contentDirty: false } : w,
+    ),
+  };
 }

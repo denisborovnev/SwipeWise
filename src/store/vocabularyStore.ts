@@ -31,6 +31,10 @@ export interface VocabularyState {
   /** Adds complete lists and words (e.g. sample data); items whose id already exists are skipped. */
   importVocabulary(lists: WordList[], words: Word[]): void;
   recordAnswer(wordId: string, answer: Answer): void;
+  /** Replaces the data with the result of a pull from the spreadsheet. */
+  applyPull(data: VocabularyData): void;
+  /** After an upload to the spreadsheet: see `markUploaded`. */
+  markUploaded(listSheetIds: Record<string, number>, uploaded: { id: string; updatedAt: string }[]): void;
   restoreReview(wordId: string, previous: ReviewState): void;
 }
 
@@ -130,6 +134,8 @@ export function createVocabularyStore({
             words: [...d.words, ...words.filter((w) => !wordIds.has(w.id))],
           };
         }),
+      applyPull: (data) => change(() => data),
+      markUploaded: (listSheetIds, uploaded) => change((d) => voc.markUploaded(d, listSheetIds, uploaded)),
       recordAnswer: (wordId, answer) => change((d) => voc.recordAnswer(d, wordId, answer, now())),
       restoreReview: (wordId, previous) => change((d) => voc.restoreReview(d, wordId, previous, now())),
     };

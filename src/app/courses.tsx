@@ -7,13 +7,14 @@ import { Button, IconButton } from '@/components/Button';
 import { Footer } from '@/components/Footer';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { languageName } from '@/model/languages';
-import { switchCourse, useCourses } from '@/store';
+import { switchCourse, useCourses, useGoogleAccount, googleAccountStore } from '@/store';
 
 /** All courses: tap one to switch to it. */
 export default function CoursesScreen() {
   const colors = useThemeColors();
   const courses = useCourses((s) => s.courses);
   const activeCourseId = useCourses((s) => s.activeCourseId);
+  const email = useGoogleAccount((s) => s.email);
   const sorted = useMemo(() => [...courses].sort((a, b) => a.name.localeCompare(b.name)), [courses]);
 
   const select = (courseId: string) => {
@@ -48,6 +49,9 @@ export default function CoursesScreen() {
                   {languageName(item.language)}
                 </Text>
               </View>
+              {item.spreadsheetId && (
+                <Ionicons name="cloud-done-outline" size={20} color={colors.textSecondary} accessibilityLabel="Connected to Google Sheets" />
+              )}
               <IconButton
                 icon="create-outline"
                 accessibilityLabel={`Edit ${item.name}`}
@@ -57,6 +61,16 @@ export default function CoursesScreen() {
           );
         }}
       />
+      {email && (
+        <View style={[styles.account, { borderTopColor: colors.border }]}>
+          <Text style={[styles.flex, { color: colors.textSecondary }]} numberOfLines={1}>
+            Google: {email}
+          </Text>
+          <Pressable hitSlop={8} onPress={() => googleAccountStore.getState().signOut()}>
+            <Text style={{ color: colors.primary }}>Sign out</Text>
+          </Pressable>
+        </View>
+      )}
       <Footer>
         <Button title="New course" icon="add" onPress={() => router.push('/course')} style={styles.flex} />
       </Footer>
@@ -69,4 +83,12 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.md, gap: Spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: 12 },
   name: { fontSize: 17, fontWeight: '600' },
+  account: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

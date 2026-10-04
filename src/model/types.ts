@@ -7,6 +7,10 @@ export interface Course {
    *  (only for data created before courses existed). */
   language: string | null;
   createdAt: string;
+  /** Google spreadsheet of the course once connected. */
+  spreadsheetId?: string;
+  /** When the course was last synced with its spreadsheet. */
+  lastSyncAt?: string;
 }
 
 /** Contents of courses.json. */
@@ -37,6 +41,9 @@ export interface Word {
   remembered: RememberStatus;
   /** Has local changes that are not pushed to the spreadsheet yet. */
   dirty: boolean;
+  /** The text or list (not only the review values) changed locally and isn't pushed yet; then the
+   *  local text wins over the sheet when pulling. */
+  contentDirty?: boolean;
   /** ISO timestamp of the last local modification. */
   updatedAt: string;
 }
@@ -48,6 +55,8 @@ export interface WordList {
   /** Google Sheets tab id once synced. */
   sheetId?: number;
   createdAt: string;
+  /** Renamed locally and not pushed yet (the local name wins over the tab title when pulling). */
+  dirty?: boolean;
 }
 
 export interface NewWordInput {
@@ -63,6 +72,8 @@ export interface VocabularyData {
   version: 1;
   lists: WordList[];
   words: Word[];
+  /** Deleted locally but maybe still in the spreadsheet: skipped when pulling, removed by the next push. */
+  deleted?: { wordIds: string[]; sheetIds: number[] };
 }
 
 /**
