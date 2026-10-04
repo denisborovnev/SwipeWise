@@ -1,4 +1,4 @@
-import type { NewWordInput, WordList } from './types';
+import type { Course, NewWordInput, WordList } from './types';
 
 /** Google Sheets tab names can't contain these characters. */
 const FORBIDDEN_TAB_CHARS = /[:\\/?*[\]]/;
@@ -43,4 +43,22 @@ export function parseExamples(text: string): string[] {
     .split('\n')
     .map((e) => e.trim())
     .filter((e) => e.length > 0);
+}
+
+/** Course names become part of the spreadsheet name, so keep them short. */
+export const MAX_COURSE_NAME = 50;
+
+export function validateCourseName(name: string, courses: Course[], ignoreCourseId?: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return 'Please enter a name.';
+  }
+  if (trimmed.length > MAX_COURSE_NAME) {
+    return `The name can be at most ${MAX_COURSE_NAME} characters long.`;
+  }
+  const lower = trimmed.toLowerCase();
+  if (courses.some((c) => c.id !== ignoreCourseId && c.name.toLowerCase() === lower)) {
+    return 'A course with this name already exists.';
+  }
+  return null;
 }

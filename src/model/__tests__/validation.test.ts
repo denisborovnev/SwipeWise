@@ -1,4 +1,4 @@
-import { parseExamples, validateListName, validateWord } from '../validation';
+import { parseExamples, validateCourseName, validateListName, validateWord } from '../validation';
 
 const lists = [{ id: 'L1', name: 'Travel', createdAt: 'x' }];
 
@@ -36,5 +36,17 @@ describe('validateWord', () => {
 describe('parseExamples', () => {
   it('splits by line and drops empty lines', () => {
     expect(parseExamples(' One. \n\n  Two.\n ')).toEqual(['One.', 'Two.']);
+  });
+});
+
+describe('validateCourseName', () => {
+  const courses = [{ id: 'A', name: 'English', language: 'en-GB', createdAt: 'x' }];
+
+  it('requires a unique name of limited length', () => {
+    expect(validateCourseName('  ', courses)).toMatch(/enter a name/);
+    expect(validateCourseName('english', courses)).toMatch(/already exists/);
+    expect(validateCourseName('English', courses, 'A')).toBeNull();
+    expect(validateCourseName('x'.repeat(51), courses)).toMatch(/at most 50/);
+    expect(validateCourseName('Spanish', courses)).toBeNull();
   });
 });

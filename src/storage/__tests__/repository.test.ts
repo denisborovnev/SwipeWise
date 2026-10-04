@@ -1,4 +1,4 @@
-import { createMemoryBackend } from '../backend';
+import { createMemoryBackend, scopeBackend } from '../backend';
 import { createDebouncedTask } from '../debounce';
 import type { Session } from '@/model/types';
 
@@ -89,5 +89,19 @@ describe('createDebouncedTask', () => {
     expect(task).toHaveBeenCalledTimes(1);
     await d.flush();
     expect(task).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('scopeBackend', () => {
+  it('keeps the files of a folder separate and deletes the folder', async () => {
+    const backend = createMemoryBackend();
+    const a = createRepository(scopeBackend(backend, 'courses/A'));
+    const b = createRepository(scopeBackend(backend, 'courses/B'));
+    await a.saveSettings({ version: 1, spreadsheetId: 'sheet-A' });
+    expect(await b.loadSettings()).toEqual({ version: 1 });
+    expect(Object.keys(backend.files)).toEqual([`courses/A/${FILES.settings}`]);
+
+    await backend.deleteFolder('courses/A');
+    expect(await a.loadSettings()).toEqual({ version: 1 });
   });
 });

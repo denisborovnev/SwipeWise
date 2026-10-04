@@ -4,15 +4,19 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { flushAll, loadAll, useSession, useVocabulary } from '@/store';
+import { flushAll, loadAll, useCourses, useSession, useVocabulary } from '@/store';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const coursesStatus = useCourses((s) => s.status);
+  const hasCourse = useCourses((s) => s.activeCourseId !== null);
   const vocabularyStatus = useVocabulary((s) => s.status);
   const sessionStatus = useSession((s) => s.status);
-  const loaded = vocabularyStatus === 'error' || (vocabularyStatus === 'ready' && sessionStatus === 'ready');
+  const courseLoaded =
+    !hasCourse || vocabularyStatus === 'error' || (vocabularyStatus === 'ready' && sessionStatus === 'ready');
+  const loaded = coursesStatus === 'error' || (coursesStatus === 'ready' && courseLoaded);
 
   useEffect(() => {
     loadAll();
@@ -37,7 +41,9 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="index" options={{ title: 'SwipeWise' }} />
-          <Stack.Screen name="all-lists" options={{ title: 'All lists' }} />
+          <Stack.Screen name="courses" options={{ title: 'Courses' }} />
+          <Stack.Screen name="course" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="all-lists"options={{ title: 'All lists' }} />
           <Stack.Screen name="lists/[id]" options={{ title: '' }} />
           <Stack.Screen name="dev-seed" options={{ title: '' }} />
           <Stack.Screen name="word" options={{ presentation: 'modal' }} />

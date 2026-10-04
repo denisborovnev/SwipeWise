@@ -25,6 +25,14 @@ without changing the rest of the app.
 ## 1. Data model
 
 ```ts
+interface Course {          // everything studied for one language
+  id: string;
+  name: string;              // defaults to the language name, e.g. "English (UK)"
+  language: string | null;   // BCP-47 code of the language being learned, e.g. "en-GB"
+                             // (null only for data from before courses existed, until the user picks it)
+  createdAt: string;
+}
+
 type RememberStatus = 'yes' | 'no' | null;   // null = never revised
 
 interface Word {
@@ -74,10 +82,16 @@ interface SyncQueueItem {           // pending remote operations
 The actual types are in `src/model/types.ts`.
 
 Local files (in `<documents>/myvocabulary/`):
-- `words.json` – all lists + words
-- `sessions.json` – the last 5 sessions, most recently used first (replaces `session.json` of earlier versions, which is migrated)
-- `sync-queue.json` – pending remote operations
-- `settings.json` – spreadsheet id, account email, last sync time, preferences
+- `courses.json` – the courses and the id of the current one
+- `courses/<courseId>/` – one folder per course:
+  - `words.json` – all lists + words of the course
+  - `sessions.json` – the last 5 sessions, most recently used first (replaces `session.json` of earlier versions, which is migrated)
+  - `sync-queue.json` – pending remote operations
+  - `settings.json` – the course's spreadsheet id, last sync time, last filter
+- App-wide Google account data (signed-in account) is kept by the sign-in library, not per course.
+
+Files from before courses existed (`words.json` etc. directly in `myvocabulary/`) are moved into the folder of
+a first course on the first start of the new version.
 
 ---
 
@@ -87,7 +101,9 @@ Local files (in `<documents>/myvocabulary/`):
 src/
   app/                       # expo-router screens (only routes live here)
     _layout.tsx              # Stack navigator, loads data, flushes on background
-    index.tsx                # Home: "Continue session" / "New session" + word lists
+    index.tsx                # Home: course switcher, "Continue session" / "New session" + word lists
+    courses.tsx              # Switch course, add / edit courses
+    course.tsx               # Create / edit a course: language + name (modal)
     session/new.tsx          # Filter selection
     session/play.tsx         # Card game
     session/recent.tsx       # Last 5 sessions
@@ -120,7 +136,7 @@ src/
 - [x] `create-expo-app` (default template: TypeScript, expo-router, reanimated, gesture-handler); added zustand, expo-file-system, expo-crypto, jest-expo, ESLint.
 - [x] `storage/`: `StorageBackend` interface with a file implementation (temp file + rename) and an in-memory one for tests; `repository` for `words.json` / `session.json` / `settings.json` (a corrupt file is kept as `*.corrupt` and the app starts fresh); debounced save (1s) with `flush()`.
 - [x] Zustand `vocabularyStore`: lists + words CRUD and `recordAnswer`, built on pure functions in `model/vocabulary.ts`; saves are flushed when the app goes to background.
-- [x] Demo list seeded on first launch.
+- [x] Demo list seeded on first launch (removed with courses: a new course starts empty).
 - [x] Home screen showing lists and word counts (placeholder until Milestone 2).
 - [x] Unit tests (Jest) for model, repository, debounce and store.
 
@@ -165,17 +181,31 @@ src/
 - [x] New session: "All words", the 4 newest lists and selected older lists as chips; "Choose lists…" opens a searchable multiple-choice picker.
 - [x] Dev helper: opening `exp://127.0.0.1:8081/--/dev-seed` adds 10 sample lists (dev builds only).
 
+### Courses ✅
+- [x] `Course` = name + language being learned (BCP-47 code, picked from a built-in list of languages incl. regional variants such as English (US/UK), for pronunciation later). Only the learned language is stored; the native language is not asked for.
+- [x] Every course has its own word lists, words, recent sessions, last filter and (from Milestone 5) spreadsheet: each course's files live in `courses/<id>/`, the stores load the files of the current course.
+- [x] `courses.json` holds the courses and the current course; the app opens the course used last.
+- [x] First start: "What language are you learning?" → create the first course.
+- [x] Upgrade: existing data is moved into a first course "My course"; the home screen asks once to pick its language (the name follows the language until the user changes it).
+- [x] Home screen title shows the current course with a ▾; it opens the Courses screen: switch course (✓ marks the current one), edit, "New course".
+- [x] Course screen: language picker with search, name (unique, defaults to the language), delete (with confirmation; not for the only course).
+
 ### Milestone 5 – Google Sheets connection
+- [ ] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
 - [ ] Switch from Expo Go to an Android **development build** (`npx expo run:android` or `eas build --profile development`); needs JDK 17 (Android Studio's bundled JBR) – the system Java 8 is too old.
 - [ ] Google Cloud project: enable **Sheets API** and **Drive API**, create Android OAuth client (package name + SHA-1 of debug & release keystores), configure OAuth consent screen (Testing mode, add yourself as a test user).
 - [ ] Scope: **`https://www.googleapis.com/auth/drive.file`** only – the app can access just the files it created itself. It is a *non-sensitive* scope (no Google verification needed, simple consent screen). The Sheets API works with this scope for app-created spreadsheets.
 - [ ] `auth/google.ts`: sign in, get access token, silent refresh on 401, sign out.
-- [ ] Settings screen: **Connect Google Sheets**:
-  1. Sign in.
-  2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false` (with `drive.file` it returns only app-created files). Also store the spreadsheet id in the file's `appProperties` (`swipewise=1`) to recognise it reliably.
-  3. Found → reconnect to it (if several, let the user pick). Not found → **create** a new spreadsheet "SwipeWise" (`spreadsheets.create`).
+- [ ] **One spreadsheet per course.** The Google account is app-wide (sign in once); each course is connected to its own spreadsheet, stored in the course's `settings.json`.
+- [ ] Every app-created spreadsheet is tagged with Drive `appProperties`: `swipewise=1`, `courseId=<id>`, `language=<code>`, so the app can tell which spreadsheet belongs to which course.
+- [ ] Settings screen (per course): **Connect Google Sheets**:
+  1. Sign in (if not signed in yet).
+  2. Look for spreadsheets previously created by the app: Drive `files.list` with `q = mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and appProperties has { key='swipewise' and value='1' }` (with `drive.file` it returns only app-created files).
+  3. A spreadsheet with this course's `courseId` → reconnect to it. Otherwise **create** a new spreadsheet "SwipeWise – <course name>" (`spreadsheets.create`, then set the `appProperties`).
   4. Show an "Open in Google Sheets" link (`https://docs.google.com/spreadsheets/d/<id>`).
   - Disconnect is also available (keeps local data, stops syncing).
+  - Renaming a course renames its spreadsheet (Drive `files.update`); deleting a course leaves the spreadsheet in Drive.
+- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`).
 - [ ] `sheetsApi.ts`: `createSpreadsheet`, `getSpreadsheet` (tabs), `batchGetValues`, `appendValues`, `batchUpdateValues`, `batchUpdate` (`addSheet`, `updateSheetProperties` for rename, `insertDimension` for header row); `driveApi.ts`: `listAppSpreadsheets`.
 - [ ] `mapper.ts`:
   - header-based column mapping (columns are found by name, case-insensitive, so the user may reorder them);
@@ -235,7 +265,7 @@ src/
 
 ## 5. Ideas for later
 - Spaced repetition (Leitner boxes / SM-2) using a `correctStreak` column and a "due today" filter.
-- Text-to-speech for the word and examples (`expo-speech`).
+- Text-to-speech for the word and examples (`expo-speech`), in the course's language.
 - Statistics screen (words learned per day, hardest words).
 - Bulk import (paste "front – back" lines).
 - Home-screen widget / daily reminder notification.

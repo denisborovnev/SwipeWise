@@ -1,3 +1,22 @@
+/** Everything studied for one language: its own word lists, sessions and spreadsheet. */
+export interface Course {
+  id: string;
+  /** Defaults to the language name, e.g. "English (UK)". */
+  name: string;
+  /** BCP-47 code of the language being learned, e.g. "en-GB"; null until the user picks it
+   *  (only for data created before courses existed). */
+  language: string | null;
+  createdAt: string;
+}
+
+/** Contents of courses.json. */
+export interface CoursesData {
+  version: 1;
+  courses: Course[];
+  /** The course the app shows; null only when there are no courses. */
+  activeCourseId: string | null;
+}
+
 /** Answer given for a word the last time it was revised; null = never revised. */
 export type RememberStatus = 'yes' | 'no' | null;
 
@@ -91,6 +110,7 @@ export interface Session {
   finishedAt?: string;
 }
 
+/** Settings of one course (settings.json in the course folder). */
 export interface Settings {
   version: 1;
   spreadsheetId?: string;

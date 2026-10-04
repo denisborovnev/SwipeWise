@@ -13,6 +13,7 @@ export const FILES = {
   settings: 'settings.json',
 } as const;
 
+/** Files of one course (in the course's folder). */
 export interface Repository {
   /** Returns null when nothing has been saved yet (first launch). */
   loadVocabulary(): Promise<VocabularyData | null>;
@@ -24,7 +25,7 @@ export interface Repository {
   saveSettings(settings: Settings): Promise<void>;
 }
 
-async function readJson<T>(backend: StorageBackend, name: string): Promise<T | null> {
+export async function readJson<T>(backend: StorageBackend, name: string): Promise<T | null> {
   const text = await backend.readText(name);
   if (text === null) {
     return null;
@@ -39,7 +40,7 @@ async function readJson<T>(backend: StorageBackend, name: string): Promise<T | n
   }
 }
 
-const writeJson = (backend: StorageBackend, name: string, value: unknown) =>
+export const writeJson = (backend: StorageBackend, name: string, value: unknown) =>
   backend.writeTextAtomic(name, JSON.stringify(value));
 
 export function createRepository(backend: StorageBackend): Repository {

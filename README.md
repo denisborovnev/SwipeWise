@@ -1,8 +1,9 @@
 # SwipeWise
 
 An Android app (React Native) for growing your foreign-language vocabulary with flashcards.
-Your word lists live in a single Google Spreadsheet that you can edit directly, but the app
-also works fully offline with a local cache and no spreadsheet at all.
+Learning several languages? Each one gets its own **course** with its own word lists. A course's
+words live in a Google Spreadsheet that you can edit directly, but the app also works fully offline
+with a local cache and no spreadsheet at all.
 
 ---
 
@@ -26,6 +27,20 @@ Each word is a two-sided card:
 ---
 
 ## Features
+
+### Courses
+- A **course** is everything you study for one language: its word lists, sessions and spreadsheet.
+  Studying English and Spanish? Create two courses, and their words never mix.
+- When creating a course you pick the **language you are learning** (e.g. English (UK), Spanish (Spain)).
+  The name defaults to the language and can be changed, so you can also have, say, "Spanish" and
+  "Spanish for work".
+- The language is stored as a standard language code (`en-GB`, `es-ES`, …), ready for pronunciation
+  in a later version.
+- The current course is shown at the top of the home screen; tap it to **switch courses** or create a new one.
+  The app opens the course you used last.
+- Courses can be renamed or deleted (deleting a course deletes its words on the phone; its spreadsheet stays
+  in your Google Drive).
+- Everything below works **inside the current course**.
 
 ### Word lists (groups)
 - Words are organised into **lists** (groups), e.g. "Travel", "Kitchen", "Verbs".
@@ -67,16 +82,17 @@ Every word stores:
 ### Storage and sync
 - **Offline first.** All data is kept in a local cache on the device file system. The app is fully
   usable without any spreadsheet connected.
-- **Google Sheets (optional).** A single spreadsheet document is the "source of truth" when connected:
-  - The **app creates the spreadsheet** ("SwipeWise") in your Google Drive when you connect.
-    After that you can open and edit it in Google Sheets like any other spreadsheet.
-  - The app can access **only this one file** (plus any other file it created) – not the rest of your
-    Google Drive or your other spreadsheets.
+- **Google Sheets (optional).** Each course has its own spreadsheet, which is the "source of truth" when connected:
+  - You sign in with your Google account once; each course is then connected separately.
+  - The **app creates the spreadsheet** (e.g. "SwipeWise – English") in your Google Drive when you connect
+    a course. After that you can open and edit it in Google Sheets like any other spreadsheet.
+  - The app can access **only the files it created** – not the rest of your Google Drive or your other
+    spreadsheets.
   - Each **tab** in the spreadsheet = one **word list**.
   - The spreadsheet can be **connected at any time later** – all local lists are then uploaded to it,
     one tab per list.
   - After reinstalling the app (or on a new phone), signing in with the same Google account finds the
-    spreadsheet created earlier and reconnects to it.
+    spreadsheets created earlier and restores your courses from them.
 - **Sync rules**
   - On app start: the cache is loaded instantly, then refreshed from the spreadsheet in the background.
   - Review results (swipes) are batched and saved to the spreadsheet periodically
@@ -88,7 +104,7 @@ Every word stores:
 
 ## Spreadsheet format
 
-One spreadsheet, one tab per word list (e.g. tab `Travel - 2026-10-04`). The first row is normally a header:
+One spreadsheet per course, one tab per word list (e.g. tab `Travel - 2026-10-04`). The first row is normally a header:
 
 | Front    | Back | Examples                          | Added               | LastRevised         | Remembered | Id         |
 |----------|------|-----------------------------------|---------------------|---------------------|------------|------------|
@@ -129,7 +145,7 @@ next push.
 See [implementationplan.md](implementationplan.md) for the implementation plan.
 
 **Status:** the offline app is complete (milestones 1–4: word lists, flashcards, session filters and
-continuity). Google Sheets sync (milestones 5–6) is next.
+continuity, plus courses). Google Sheets sync (milestones 5–6) is next.
 
 ---
 
@@ -143,4 +159,5 @@ npm run typecheck    # TypeScript
 npm run lint         # ESLint
 ```
 
-Local data is stored in the app's documents folder under `myvocabulary/` (`words.json`, `session.json`, `settings.json`).
+Local data is stored in the app's documents folder under `myvocabulary/`: `courses.json` (the courses and
+the current one) and a folder per course, `courses/<id>/`, with `words.json`, `sessions.json` and `settings.json`.

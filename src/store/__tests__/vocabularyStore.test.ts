@@ -3,40 +3,57 @@ import { createRepository, FILES } from '@/storage/repository';
 
 import { createVocabularyStore } from '../vocabularyStore';
 
-function setup(options: { seedDemo?: boolean; files?: Record<string, string> } = {}) {
-  const backend = createMemoryBackend(options.files);
+function setup(files?: Record<string, string>) {
+  const backend = createMemoryBackend(files);
+  const repository = createRepository(backend);
   let n = 0;
-  const store = createVocabularyStore({
-    repository: createRepository(backend),
-    newId: () => `id${++n}`,
-    now: () => '2026-10-04T10:00:00.000Z',
-    seedDemo: options.seedDemo ?? false,
-  });
+  const store = createVocabularyStore({ newId: () => `id${++n}`, now: () => '2026-10-04T10:00:00.000Z' });
   const saved = () => JSON.parse(backend.files[FILES.vocabulary]);
-  return { backend, store, saved };
+  return { backend, repository, store, saved };
 }
 
 describe('vocabularyStore', () => {
-  it('seeds a demo list on first launch and saves it', async () => {
-    const { store, saved } = setup({ seedDemo: true });
-    await store.getState().load();
+  it('starts a new course with no words and saves it', async () => {
+    const { store, repository, saved } = setup();
+    await store.getState().load(repository);
     const { status, data } = store.getState();
     expect(status).toBe('ready');
-    expect(data.lists).toHaveLength(1);
-    expect(data.words.length).toBeGreaterThan(0);
+    expect(data).toEqual({ version: 1, lists: [], words: [] });
     expect(saved()).toEqual(data);
   });
 
-  it('loads existing data instead of seeding', async () => {
+  it('loads existing data', async () => {
     const existing = { version: 1, lists: [{ id: 'L', name: 'Mine', createdAt: 'x' }], words: [] };
-    const { store } = setup({ seedDemo: true, files: { [FILES.vocabulary]: JSON.stringify(existing) } });
-    await store.getState().load();
+    const { store, repository } = setup({ [FILES.vocabulary]: JSON.stringify(existing) });
+    await store.getState().load(repository);
     expect(store.getState().data).toEqual(existing);
   });
 
+  it('saves pending changes to the previous course before loading another one', async () => {
+    const { store, repository, saved } = setup();
+    await store.getState().load(repository);
+    store.getState().addList('Travel');
+
+    const other = createMemoryBackend();
+    await store.getState().load(createRepository(other));
+    expect(saved().lists).toHaveLength(1);
+    expect(store.getState().data.lists).toEqual([]);
+    expect(JSON.parse(other.files[FILES.vocabulary]).lists).toEqual([]);
+  });
+
+  it('unloads: saves pending changes and rejects new ones', async () => {
+    const { store, repository, saved } = setup();
+    await store.getState().load(repository);
+    store.getState().addList('Travel');
+    await store.getState().unload();
+    expect(saved().lists).toHaveLength(1);
+    expect(store.getState().status).toBe('idle');
+    expect(() => store.getState().addList('Food')).toThrow('not loaded');
+  });
+
   it('persists changes after flush', async () => {
-    const { store, saved } = setup();
-    await store.getState().load();
+    const { store, repository, saved } = setup();
+    await store.getState().load(repository);
     const listId = store.getState().addList('Travel');
     const wordId = store.getState().addWord(listId, { front: 'машина', back: 'car' });
     store.getState().recordAnswer(wordId, 'yes');
@@ -51,8 +68,8 @@ describe('vocabularyStore', () => {
   it('writes to disk only after the debounce delay', async () => {
     jest.useFakeTimers();
     try {
-      const { store, backend } = setup();
-      await store.getState().load();
+      const { store, backend, repository } = setup();
+      await store.getState().load(repository);
       const before = backend.files[FILES.vocabulary];
       store.getState().addList('Travel');
       expect(backend.files[FILES.vocabulary]).toBe(before);
@@ -64,8 +81,8 @@ describe('vocabularyStore', () => {
   });
 
   it('imports lists and words, skipping ids that already exist', async () => {
-    const { store, saved } = setup();
-    await store.getState().load();
+    const { store, repository, saved } = setup();
+    await store.getState().load(repository);
     const list = { id: 'L', name: 'Sample', createdAt: '2026-05-01T00:00:00.000Z' };
     const word = {
       id: 'W',
@@ -92,9 +109,9 @@ describe('vocabularyStore', () => {
   });
 
   it('reports load errors', async () => {
-    const { store, backend } = setup();
+    const { store, backend, repository } = setup();
     backend.readText = () => Promise.reject(new Error('disk on fire'));
-    await store.getState().load();
+    await store.getState().load(repository);
     expect(store.getState()).toMatchObject({ status: 'error', error: 'disk on fire' });
   });
 });

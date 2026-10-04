@@ -1,6 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import { createDemoVocabulary } from '@/model/demo';
 import type { Answer, NewWordInput, ReviewState, VocabularyData, Word, WordList, WordPatch } from '@/model/types';
 import * as voc from '@/model/vocabulary';
 import { createDebouncedTask } from '@/storage/debounce';
@@ -13,7 +12,10 @@ export interface VocabularyState {
   error?: string;
   data: VocabularyData;
 
-  load(): Promise<void>;
+  /** Saves pending changes of the course loaded before, then loads the words of a course. */
+  load(repository: Repository): Promise<void>;
+  /** Saves pending changes and forgets the loaded words (e.g. when the course is deleted). */
+  unload(): Promise<void>;
   /** Writes pending changes to disk immediately. */
   flush(): Promise<void>;
 
@@ -31,24 +33,31 @@ export interface VocabularyState {
 }
 
 export interface VocabularyStoreDeps {
-  repository: Repository;
   newId: () => string;
   now?: () => string;
   /** Delay before changes are written to disk. */
   saveDelayMs?: number;
-  /** Fill an empty vocabulary with a demo list on first launch. */
-  seedDemo?: boolean;
 }
 
 export function createVocabularyStore({
-  repository,
   newId,
   now = () => new Date().toISOString(),
   saveDelayMs = 1000,
-  seedDemo = true,
 }: VocabularyStoreDeps): StoreApi<VocabularyState> {
   return createStore<VocabularyState>()((set, get) => {
-    const saver = createDebouncedTask(() => repository.saveVocabulary(get().data), saveDelayMs);
+    /** Files of the loaded course. */
+    let repository: Repository | null = null;
+    /** Ignores the result of a load that was overtaken by a newer one (quick course switches). */
+    let loadCount = 0;
+    const saver = createDebouncedTask(async () => {
+      await repository?.saveVocabulary(get().data);
+    }, saveDelayMs);
+
+    /** Stops changes and writes the pending ones to the files they belong to. */
+    const close = async () => {
+      set({ status: 'loading', error: undefined });
+      await saver.flush();
+    };
 
     /** Applies a pure change to the data and schedules a save. */
     const change = (fn: (data: VocabularyData) => VocabularyData) => {
@@ -63,18 +72,31 @@ export function createVocabularyStore({
       status: 'idle',
       data: voc.emptyVocabulary(),
 
-      async load() {
-        set({ status: 'loading', error: undefined });
+      async load(next) {
+        const id = ++loadCount;
+        await close();
+        repository = next;
         try {
-          let data = await repository.loadVocabulary();
+          let data = await next.loadVocabulary();
           if (!data) {
-            data = seedDemo ? createDemoVocabulary(newId, now()) : voc.emptyVocabulary();
-            await repository.saveVocabulary(data);
+            data = voc.emptyVocabulary();
+            await next.saveVocabulary(data);
           }
-          set({ status: 'ready', data });
+          if (id === loadCount) {
+            set({ status: 'ready', data });
+          }
         } catch (e) {
-          set({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+          if (id === loadCount) {
+            set({ status: 'error', error: e instanceof Error ? e.message : String(e) });
+          }
         }
+      },
+
+      async unload() {
+        ++loadCount;
+        await close();
+        repository = null;
+        set({ status: 'idle', data: voc.emptyVocabulary() });
       },
 
       flush: () => saver.flush(),

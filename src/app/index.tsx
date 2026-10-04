@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Footer } from '@/components/Footer';
@@ -10,7 +11,8 @@ import { SessionCard } from '@/components/SessionCard';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
-import { useSession, useVocabulary } from '@/store';
+import type { Course } from '@/model/types';
+import { useCourses, useSession, useVocabulary } from '@/store';
 import { plural } from '@/utils/format';
 
 /** How many of the newest lists the home screen shows; the rest are under "All lists". */
@@ -18,6 +20,9 @@ const HOME_LIST_COUNT = 5;
 
 export default function HomeScreen() {
   const colors = useThemeColors();
+  const coursesStatus = useCourses((s) => s.status);
+  const coursesError = useCourses((s) => s.error);
+  const course = useCourses((s) => s.courses.find((c) => c.id === s.activeCourseId));
   const status = useVocabulary((s) => s.status);
   const error = useVocabulary((s) => s.error);
   const data = useVocabulary((s) => s.data);
@@ -29,26 +34,32 @@ export default function HomeScreen() {
     [data],
   );
 
-  if (status === 'error') {
+  if (coursesStatus === 'error' || status === 'error') {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.danger }}>Could not load your words: {error}</Text>
+        <Text style={{ color: colors.danger }}>Could not load your words: {coursesError ?? error}</Text>
       </View>
     );
   }
 
-  if (status !== 'ready') {
+  if (coursesStatus === 'ready' && !course) {
+    return <Welcome />;
+  }
+
+  if (status !== 'ready' || !course) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen options={{ headerTitle: () => <CourseTitle course={course} /> }} />
       <FlatList
         contentContainerStyle={styles.content}
         data={newestLists}
         keyExtractor={(l) => l.id}
         ListHeaderComponent={
           <View style={styles.header}>
+            {!course.language && <LanguageMissing course={course} />}
             {session && <SessionCard session={session} />}
             <View style={styles.sessionButtons}>
               {recentCount > 1 && (
@@ -100,7 +111,64 @@ export default function HomeScreen() {
   );
 }
 
+/** Header title: the current course; opens the Courses screen. */
+function CourseTitle({ course }: { course: Course }) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Course ${course.name}. Switch course`}
+      onPress={() => router.push('/courses')}
+      hitSlop={8}
+      style={({ pressed }) => [styles.courseTitle, { opacity: pressed ? 0.6 : 1 }]}>
+      <Text style={[styles.courseName, { color: colors.text }]} numberOfLines={1}>
+        {course.name}
+      </Text>
+      <Ionicons name="chevron-down" size={18} color={colors.text} />
+    </Pressable>
+  );
+}
+
+/** Shown once after the update that introduced courses: the existing words need a language. */
+function LanguageMissing({ course }: { course: Course }) {
+  const colors = useThemeColors();
+  return (
+    <View style={[styles.notice, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+      <Text style={{ color: colors.text, fontSize: 16 }}>
+        Your words are now in the course “{course.name}”. Which language are you learning in it?
+      </Text>
+      <Button
+        title="Choose language"
+        icon="language"
+        onPress={() => router.push({ pathname: '/course', params: { id: course.id } })}
+      />
+    </View>
+  );
+}
+
+/** First start: no courses yet. */
+function Welcome() {
+  const colors = useThemeColors();
+  return (
+    <View style={[styles.center, styles.welcome, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ title: 'SwipeWise' }} />
+      <Ionicons name="albums-outline" size={64} color={colors.primary} />
+      <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome to SwipeWise</Text>
+      <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
+        Learn words with flashcards: flip a card, then swipe right if you knew it, left if you didn’t.
+      </Text>
+      <Button title="Choose the language you’re learning" icon="language" onPress={() => router.push('/course')} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  courseTitle: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: 260 },
+  courseName: { fontSize: 20, fontWeight: '600', flexShrink: 1 },
+  notice: { gap: Spacing.sm, padding: Spacing.md, borderRadius: 12, borderWidth: 1 },
+  welcome: { gap: Spacing.md },
+  welcomeTitle: { fontSize: 24, fontWeight: '700' },
+  welcomeText: { fontSize: 16, textAlign: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
   content: { padding: Spacing.md, gap: Spacing.sm },
   header: { marginBottom: Spacing.sm, gap: Spacing.sm },

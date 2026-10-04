@@ -17,7 +17,10 @@ export interface SessionState {
   /** Filter of the last "New session", offered as the default next time. */
   lastFilter: SessionFilter | null;
 
-  load(): Promise<void>;
+  /** Saves pending changes of the course loaded before, then loads the sessions of a course. */
+  load(repository: Repository): Promise<void>;
+  /** Saves pending changes and forgets the loaded sessions. */
+  unload(): Promise<void>;
   flush(): Promise<void>;
 
   /** Number of words a new session with this filter would contain. */
@@ -37,7 +40,6 @@ export interface SessionState {
 }
 
 export interface SessionStoreDeps {
-  repository: Repository;
   vocabulary: StoreApi<VocabularyState>;
   newId: () => string;
   now?: () => Date;
@@ -46,7 +48,6 @@ export interface SessionStoreDeps {
 }
 
 export function createSessionStore({
-  repository,
   vocabulary,
   newId,
   now = () => new Date(),
@@ -54,7 +55,12 @@ export function createSessionStore({
   saveDelayMs = 300,
 }: SessionStoreDeps): StoreApi<SessionState> {
   return createStore<SessionState>()((set, get) => {
-    const saver = createDebouncedTask(() => repository.saveRecentSessions(get().recent), saveDelayMs);
+    /** Files of the loaded course. */
+    let repository: Repository | null = null;
+    let loadCount = 0;
+    const saver = createDebouncedTask(async () => {
+      await repository?.saveRecentSessions(get().recent);
+    }, saveDelayMs);
     const nowIso = () => now().toISOString();
 
     /** Stores the session as the current one (first in the recent list). */
@@ -68,9 +74,18 @@ export function createSessionStore({
 
     const rememberFilter = async (filter: SessionFilter) => {
       set({ lastFilter: filter });
-      const settings = await repository.loadSettings();
-      await repository.saveSettings({ ...settings, lastFilter: filter });
+      const repo = repository;
+      if (repo) {
+        const settings = await repo.loadSettings();
+        await repo.saveSettings({ ...settings, lastFilter: filter });
+      }
     };
+
+    const close = async () => {
+      set({ status: 'loading' });
+      await saver.flush();
+    };
+    const empty = { recent: [], session: null, lastFilter: null };
 
     return {
       status: 'idle',
@@ -78,15 +93,28 @@ export function createSessionStore({
       recent: [],
       lastFilter: null,
 
-      async load() {
-        set({ status: 'loading' });
+      async load(next) {
+        const id = ++loadCount;
+        await close();
+        repository = next;
         try {
-          const [recent, settings] = await Promise.all([repository.loadRecentSessions(), repository.loadSettings()]);
-          set({ status: 'ready', recent, session: recent[0] ?? null, lastFilter: settings.lastFilter ?? null });
+          const [recent, settings] = await Promise.all([next.loadRecentSessions(), next.loadSettings()]);
+          if (id === loadCount) {
+            set({ status: 'ready', recent, session: recent[0] ?? null, lastFilter: settings.lastFilter ?? null });
+          }
         } catch (e) {
           console.error('Could not load the sessions', e);
-          set({ status: 'ready', recent: [], session: null });
+          if (id === loadCount) {
+            set({ status: 'ready', ...empty });
+          }
         }
+      },
+
+      async unload() {
+        ++loadCount;
+        await close();
+        repository = null;
+        set({ status: 'idle', ...empty });
       },
 
       flush: () => saver.flush(),

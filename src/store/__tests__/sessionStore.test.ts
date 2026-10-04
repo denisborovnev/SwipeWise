@@ -14,10 +14,10 @@ async function setup(random = KEEP_ORDER) {
   const repository = createRepository(backend);
   let n = 0;
   const newId = () => `id${++n}`;
-  const vocabulary = createVocabularyStore({ repository, newId, now: () => NOW.toISOString(), seedDemo: false });
-  const sessions = createSessionStore({ repository, vocabulary, newId, now: () => NOW, random });
-  await vocabulary.getState().load();
-  await sessions.getState().load();
+  const vocabulary = createVocabularyStore({ newId, now: () => NOW.toISOString() });
+  const sessions = createSessionStore({ vocabulary, newId, now: () => NOW, random });
+  await vocabulary.getState().load(repository);
+  await sessions.getState().load(repository);
 
   const listId = vocabulary.getState().addList('Travel');
   const otherListId = vocabulary.getState().addList('Kitchen');
@@ -104,11 +104,26 @@ describe('sessionStore', () => {
     await sessions.getState().flush();
     expect(backend.files[FILES.sessions]).toBeDefined();
 
-    const reloaded = createSessionStore({ repository, vocabulary, newId: () => 'x' });
-    await reloaded.getState().load();
+    const reloaded = createSessionStore({ vocabulary, newId: () => 'x' });
+    await reloaded.getState().load(repository);
     expect(reloaded.getState().session).toEqual(sessions.getState().session);
     expect(reloaded.getState().recent).toEqual(sessions.getState().recent);
     expect(reloaded.getState().lastFilter).toEqual({ listIds: [listId] });
+  });
+
+  it('keeps the sessions of each course separate', async () => {
+    const { backend, repository, sessions, listId } = await setup();
+    sessions.getState().startSession({ listIds: [listId] });
+
+    // Pending changes go to the first course's files before the other course is loaded.
+    const other = createRepository(createMemoryBackend());
+    await sessions.getState().load(other);
+    expect(JSON.parse(backend.files[FILES.sessions]).sessions).toHaveLength(1);
+    expect(sessions.getState()).toMatchObject({ status: 'ready', session: null, recent: [], lastFilter: null });
+
+    await sessions.getState().load(repository);
+    expect(sessions.getState().recent).toHaveLength(1);
+    expect(sessions.getState().lastFilter).toEqual({ listIds: [listId] });
   });
 
   describe('recent sessions', () => {
