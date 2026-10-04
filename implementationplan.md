@@ -91,6 +91,8 @@ src/
     session/new.tsx          # Filter selection
     session/play.tsx         # Card game
     session/recent.tsx       # Last 5 sessions
+    all-lists.tsx            # All lists: search, sort, grouped by month
+    dev-seed.tsx             # Dev only: deep link that adds sample lists
     session/summary.tsx      # Results of the session
     lists/[id].tsx           # Words of a list, rename/delete list
     word.tsx                 # Add / edit word (modal)
@@ -156,6 +158,13 @@ src/
 
 > ✅ After Milestone 4 the app is fully usable offline.
 
+### Many word lists ✅
+- [x] Lists have a creation date (`createdAt`), shown on every list row.
+- [x] Home screen shows the 5 newest lists + "All lists (N)".
+- [x] All lists screen: search, sort (newest / oldest / A–Z), month headings for date sorts.
+- [x] New session: "All words", the 4 newest lists and selected older lists as chips; "Choose lists…" opens a searchable multiple-choice picker.
+- [x] Dev helper: opening `exp://127.0.0.1:8081/--/dev-seed` adds 10 sample lists (dev builds only).
+
 ### Milestone 5 – Google Sheets connection
 - [ ] Switch from Expo Go to an Android **development build** (`npx expo run:android` or `eas build --profile development`); needs JDK 17 (Android Studio's bundled JBR) – the system Java 8 is too old.
 - [ ] Google Cloud project: enable **Sheets API** and **Drive API**, create Android OAuth client (package name + SHA-1 of debug & release keystores), configure OAuth consent screen (Testing mode, add yourself as a test user).
@@ -176,6 +185,11 @@ src/
   - Missing system columns (`Added`, `LastRevised`, `Remembered`, `Id`) → tab is marked `needsColumns`; they will be appended to the right.
   - Rows with Front/Back but no `Id` → hand-added words: generate `Id`, set `Added = now`, leave `LastRevised`/`Remembered` empty; mark the row `needsSystemCells`. Until the `Id` is written, the row is matched by tab + row content (Front+Back).
   - Completely empty rows are skipped; rows with only Front or only Back are flagged as incomplete (shown in the app, not used in sessions).
+- [ ] **List creation date in the tab name**: tabs are named `<list name> - YYYY-MM-DD` (e.g. `Travel - 2026-10-04`); the app shows "Travel" and uses the date as the list's `createdAt`.
+  - Tab without a date suffix (created by hand) → the list gets today's date when the app first sees it, and the tab is renamed with the next push.
+  - Date removed by hand → treated like a tab without a date (dated today); date changed by hand → the app takes the new date.
+  - List names are limited to 87 characters so that name + " - YYYY-MM-DD" fits the 100-character tab name limit (already enforced).
+  - Display names stay unique even if the dates differ.
 - [ ] **Deferred normalisation** – the pending fixes above are added to the sync queue as a normal (non-urgent) item and written with the **next push** (whichever comes first: a new word, a batch of review results, app going to background). Order within that push: insert header row → append missing system columns → write system cells / review updates.
 - [ ] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The default empty `Sheet1` tab is renamed/reused for the first list. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 

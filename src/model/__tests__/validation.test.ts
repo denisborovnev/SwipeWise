@@ -10,7 +10,7 @@ describe('validateListName', () => {
     ['A/B', 'characters'],
     ['What?', 'characters'],
     ['[x]', 'characters'],
-    ['x'.repeat(101), 'at most 100'],
+    ['x'.repeat(88), 'at most 87'],
     [' travel ', 'already exists'],
   ])('rejects %j', (name, message) => {
     expect(validateListName(name, lists)).toContain(message);

@@ -37,7 +37,9 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="index" options={{ title: 'MyVocabulary' }} />
+          <Stack.Screen name="all-lists" options={{ title: 'All lists' }} />
           <Stack.Screen name="lists/[id]" options={{ title: '' }} />
+          <Stack.Screen name="dev-seed" options={{ title: '' }} />
           <Stack.Screen name="word" options={{ presentation: 'modal' }} />
           <Stack.Screen name="session/new" options={{ title: 'New session' }} />
           <Stack.Screen name="session/recent" options={{ title: 'Recent sessions' }} />

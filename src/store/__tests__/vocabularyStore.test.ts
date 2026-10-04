@@ -63,6 +63,29 @@ describe('vocabularyStore', () => {
     }
   });
 
+  it('imports lists and words, skipping ids that already exist', async () => {
+    const { store, saved } = setup();
+    await store.getState().load();
+    const list = { id: 'L', name: 'Sample', createdAt: '2026-05-01T00:00:00.000Z' };
+    const word = {
+      id: 'W',
+      listId: 'L',
+      front: 'a',
+      back: 'b',
+      examples: [],
+      addedAt: list.createdAt,
+      lastRevisedAt: null,
+      remembered: null,
+      dirty: true,
+      updatedAt: list.createdAt,
+    };
+    store.getState().importVocabulary([list], [word]);
+    store.getState().importVocabulary([list], [word]);
+    await store.getState().flush();
+    expect(saved().lists).toEqual([list]);
+    expect(saved().words).toEqual([word]);
+  });
+
   it('rejects changes before load', () => {
     const { store } = setup();
     expect(() => store.getState().addList('Travel')).toThrow('not loaded');

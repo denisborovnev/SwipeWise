@@ -6,16 +6,21 @@ import { Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-nati
 import { Button } from '@/components/Button';
 import { Chips, type ChipOption } from '@/components/Chips';
 import { Footer } from '@/components/Footer';
+import { ListPickerModal } from '@/components/ListPickerModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { selectWords } from '@/model/filter';
+import { sortLists, withWordCounts } from '@/model/lists';
 import type { DateFilter, SessionFilter } from '@/model/types';
 import { sessionStore, useSession, useVocabulary } from '@/store';
 import { formatDate, plural } from '@/utils/format';
 
 type DateChoice = 'any' | `d${number}` | 'date';
 
-/** Chip key of "All words" (list ids are UUIDs, so they can't clash). */
+/** Chip keys of "All words" and "Choose lists…" (list ids are UUIDs, so they can't clash). */
 const ALL = 'all';
+const MORE = 'more';
+/** How many of the newest lists get their own chip; the rest are in "Choose lists…". */
+const QUICK_LIST_COUNT = 4;
 
 const ADDED_PRESETS: ChipOption<DateChoice>[] = [
   { key: 'any', label: 'Any time' },
@@ -58,15 +63,26 @@ export default function NewSessionScreen() {
 
   const count = useMemo(() => selectWords(words, filter, new Date()).length, [words, filter]);
 
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const listsWithCounts = useMemo(() => sortLists(withWordCounts(lists, words), 'newest'), [lists, words]);
+
+  // Chips: the newest lists plus any selected older ones; everything else is in the picker.
+  const quickLists = listsWithCounts.filter(
+    (l, i) => i < QUICK_LIST_COUNT || filter.listIds.includes(l.id),
+  );
+  const hasMore = quickLists.length < listsWithCounts.length;
   const listOptions: ChipOption<string>[] = [
     { key: ALL, label: 'All words' },
-    ...[...lists].sort((a, b) => a.name.localeCompare(b.name)).map((l) => ({ key: l.id, label: l.name })),
+    ...quickLists.map((l) => ({ key: l.id, label: l.name })),
+    ...(hasMore ? [{ key: MORE, label: `Choose lists… (${listsWithCounts.length})` }] : []),
   ];
 
   /** "All words" clears the selection; a list is toggled (none left = all words). */
   const toggleList = (key: string) => {
     if (key === ALL) {
       update({ listIds: [] });
+    } else if (key === MORE) {
+      setPickerVisible(true);
     } else {
       const { listIds } = filter;
       update({ listIds: listIds.includes(key) ? listIds.filter((id) => id !== key) : [...listIds, key] });
@@ -87,6 +103,16 @@ export default function NewSessionScreen() {
             options={listOptions}
             selected={filter.listIds.length === 0 ? [ALL] : filter.listIds}
             onSelect={toggleList}
+          />
+          <ListPickerModal
+            visible={pickerVisible}
+            lists={listsWithCounts}
+            selected={filter.listIds}
+            onDone={(listIds) => {
+              update({ listIds });
+              setPickerVisible(false);
+            }}
+            onCancel={() => setPickerVisible(false)}
           />
         </Section>
 

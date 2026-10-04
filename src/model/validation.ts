@@ -2,7 +2,8 @@ import type { NewWordInput, WordList } from './types';
 
 /** Google Sheets tab names can't contain these characters. */
 const FORBIDDEN_TAB_CHARS = /[:\\/?*[\]]/;
-const MAX_LIST_NAME = 100;
+/** Sheets allows 100 characters per tab name; " - YYYY-MM-DD" (the creation date) takes 13. */
+export const MAX_LIST_NAME = 87;
 
 /**
  * List names become spreadsheet tab names, so they follow the Sheets rules.

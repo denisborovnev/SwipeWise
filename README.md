@@ -31,6 +31,8 @@ Each word is a two-sided card:
 - Words are organised into **lists** (groups), e.g. "Travel", "Kitchen", "Verbs".
 - Lists can be created, renamed, and filled with words **from inside the app**.
 - Lists can also be created and edited **directly in Google Sheets** – the app picks up the changes on the next sync.
+- Every list has a **creation date**. The home screen shows the newest lists; **All lists** has search,
+  sorting (newest / oldest / A–Z) and month headings, so hundreds of lists stay manageable.
 
 ### Study sessions
 When starting a new session you choose which words to practise:
@@ -86,7 +88,7 @@ Every word stores:
 
 ## Spreadsheet format
 
-One spreadsheet, one tab per word list. The first row is normally a header:
+One spreadsheet, one tab per word list (e.g. tab `Travel - 2026-10-04`). The first row is normally a header:
 
 | Front    | Back | Examples                          | Added               | LastRevised         | Remembered | Id         |
 |----------|------|-----------------------------------|---------------------|---------------------|------------|------------|
@@ -111,6 +113,8 @@ next push.
 - **Id** – technical column managed by the app (lets the app match rows even if you sort or move them).
 - Columns are recognised by their header name, so you can reorder them freely.
 - Tabs whose names start with `_` (e.g. `_notes`) are ignored by the app.
+- Tab names end with the list's creation date: `Travel - 2026-10-04`. A tab you add by hand without a
+  date is dated the day the app first sees it, and the app adds the date to its name.
 
 ---
 

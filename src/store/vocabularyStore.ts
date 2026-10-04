@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { createDemoVocabulary } from '@/model/demo';
-import type { Answer, NewWordInput, ReviewState, VocabularyData, WordPatch } from '@/model/types';
+import type { Answer, NewWordInput, ReviewState, VocabularyData, Word, WordList, WordPatch } from '@/model/types';
 import * as voc from '@/model/vocabulary';
 import { createDebouncedTask } from '@/storage/debounce';
 import type { Repository } from '@/storage/repository';
@@ -24,6 +24,8 @@ export interface VocabularyState {
   addWord(listId: string, input: NewWordInput): string;
   updateWord(wordId: string, patch: WordPatch): void;
   deleteWord(wordId: string): void;
+  /** Adds complete lists and words (e.g. sample data); items whose id already exists are skipped. */
+  importVocabulary(lists: WordList[], words: Word[]): void;
   recordAnswer(wordId: string, answer: Answer): void;
   restoreReview(wordId: string, previous: ReviewState): void;
 }
@@ -92,6 +94,16 @@ export function createVocabularyStore({
       },
       updateWord: (wordId, patch) => change((d) => voc.updateWord(d, wordId, patch, now())),
       deleteWord: (wordId) => change((d) => voc.deleteWord(d, wordId)),
+      importVocabulary: (lists, words) =>
+        change((d) => {
+          const listIds = new Set(d.lists.map((l) => l.id));
+          const wordIds = new Set(d.words.map((w) => w.id));
+          return {
+            ...d,
+            lists: [...d.lists, ...lists.filter((l) => !listIds.has(l.id))],
+            words: [...d.words, ...words.filter((w) => !wordIds.has(w.id))],
+          };
+        }),
       recordAnswer: (wordId, answer) => change((d) => voc.recordAnswer(d, wordId, answer, now())),
       restoreReview: (wordId, previous) => change((d) => voc.restoreReview(d, wordId, previous, now())),
     };

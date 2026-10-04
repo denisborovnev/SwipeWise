@@ -1,17 +1,20 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Footer } from '@/components/Footer';
+import { ListRow } from '@/components/ListRow';
+import { NewListButton } from '@/components/NewListButton';
 import { SessionCard } from '@/components/SessionCard';
-import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
+import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
-import { validateListName } from '@/model/validation';
-import { useSession, useVocabulary, vocabularyStore } from '@/store';
+import { useSession, useVocabulary } from '@/store';
 import { plural } from '@/utils/format';
+
+/** How many of the newest lists the home screen shows; the rest are under "All lists". */
+const HOME_LIST_COUNT = 5;
 
 export default function HomeScreen() {
   const colors = useThemeColors();
@@ -20,28 +23,11 @@ export default function HomeScreen() {
   const data = useVocabulary((s) => s.data);
   const session = useSession((s) => s.session);
   const recentCount = useSession((s) => s.recent.length);
-  const [creating, setCreating] = useState(false);
 
-  const lists = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const w of data.words) {
-      counts.set(w.listId, (counts.get(w.listId) ?? 0) + 1);
-    }
-    return data.lists
-      .map((list) => ({ ...list, wordCount: counts.get(list.id) ?? 0 }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [data]);
-
-  const createList = (name: string) => {
-    const err = validateListName(name, data.lists);
-    if (err) {
-      return err;
-    }
-    const id = vocabularyStore.getState().addList(name);
-    setCreating(false);
-    router.push({ pathname: '/lists/[id]', params: { id } });
-    return null;
-  };
+  const newestLists = useMemo(
+    () => sortLists(withWordCounts(data.lists, data.words), 'newest').slice(0, HOME_LIST_COUNT),
+    [data],
+  );
 
   if (status === 'error') {
     return (
@@ -59,7 +45,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <FlatList
         contentContainerStyle={styles.content}
-        data={lists}
+        data={newestLists}
         keyExtractor={(l) => l.id}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -83,7 +69,9 @@ export default function HomeScreen() {
                 style={styles.flex}
               />
             </View>
-            <Text style={[styles.sectionTitle, styles.listsTitle, { color: colors.text }]}>Word lists</Text>
+            <Text style={[styles.sectionTitle, styles.listsTitle, { color: colors.text }]}>
+              {data.lists.length > HOME_LIST_COUNT ? 'Newest word lists' : 'Word lists'}
+            </Text>
             <Text style={{ color: colors.textSecondary }}>
               {plural(data.lists.length, 'list')} · {plural(data.words.length, 'word')}
             </Text>
@@ -92,30 +80,22 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <Text style={{ color: colors.textSecondary }}>No word lists yet. Create your first one below.</Text>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/lists/[id]', params: { id: item.id } })}
-            style={({ pressed }) => [styles.row, { backgroundColor: colors.card, opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={{ color: colors.textSecondary }}>{plural(item.wordCount, 'word')}</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </Pressable>
-        )}
+        renderItem={({ item }) => <ListRow list={item} />}
+        ListFooterComponent={
+          data.lists.length > HOME_LIST_COUNT ? (
+            <Button
+              title={`All lists (${data.lists.length})`}
+              icon="list"
+              variant="secondary"
+              onPress={() => router.push('/all-lists')}
+              style={styles.allLists}
+            />
+          ) : null
+        }
       />
       <Footer>
-        <Button title="New list" icon="add" variant="secondary" onPress={() => setCreating(true)} style={{ flex: 1 }} />
+        <NewListButton />
       </Footer>
-      <TextPromptModal
-        visible={creating}
-        title="New word list"
-        placeholder="e.g. Travel"
-        submitLabel="Create"
-        onSubmit={createList}
-        onCancel={() => setCreating(false)}
-      />
     </View>
   );
 }
@@ -128,12 +108,5 @@ const styles = StyleSheet.create({
   listsTitle: { marginTop: Spacing.sm },
   sessionButtons: { flexDirection: 'row', gap: Spacing.sm },
   flex: { flex: 1 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: 12,
-  },
-  listName: { flex: 1, fontSize: 17, fontWeight: '600' },
+  allLists: { marginTop: Spacing.xs },
 });
