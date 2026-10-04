@@ -97,7 +97,7 @@ export default function WordScreen() {
           value={front}
           onChangeText={setFront}
           autoCapitalize="none"
-          placeholder="машина"
+          placeholder="Definition in your native language"
           placeholderTextColor={colors.textSecondary}
           returnKeyType="next"
           submitBehavior="submit"
@@ -111,7 +111,7 @@ export default function WordScreen() {
           value={back}
           onChangeText={setBack}
           autoCapitalize="none"
-          placeholder="car"
+          placeholder="Word"
           placeholderTextColor={colors.textSecondary}
           returnKeyType="next"
           submitBehavior="submit"
@@ -124,7 +124,7 @@ export default function WordScreen() {
           ref={examplesRef}
           value={examples}
           onChangeText={setExamples}
-          placeholder="Don't drive your car too fast."
+          placeholder="Example usage"
           placeholderTextColor={colors.textSecondary}
           multiline
           style={[inputStyle, styles.multiline]}

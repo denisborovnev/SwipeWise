@@ -51,3 +51,13 @@ export function groupByMonth<T extends WordList>(lists: readonly T[]): MonthGrou
   }
   return groups;
 }
+
+/** `base`, or `base (2)`, `base (3)`… if a list with that name exists (case-insensitive). */
+export function uniqueListName(base: string, lists: Pick<WordList, 'name'>[]): string {
+  const taken = new Set(lists.map((l) => l.name.toLowerCase()));
+  let name = base;
+  for (let n = 2; taken.has(name.toLowerCase()); n++) {
+    name = `${base} (${n})`;
+  }
+  return name;
+}

@@ -1,13 +1,18 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { uniqueListName } from '@/model/lists';
 import { validateListName } from '@/model/validation';
 import { vocabularyStore } from '@/store';
+import { formatDate } from '@/utils/format';
 
 import { Button } from './Button';
 import { TextPromptModal } from './TextPromptModal';
 
-/** "New list" button with its name dialog; opens the new list after creating it. */
+/**
+ * "New list" button with its name dialog; opens the new list after creating it.
+ * The suggested name is today's date (e.g. a list per lesson), selected so typing replaces it.
+ */
 export function NewListButton() {
   const [creating, setCreating] = useState(false);
 
@@ -28,6 +33,8 @@ export function NewListButton() {
       <TextPromptModal
         visible={creating}
         title="New word list"
+        initialValue={creating ? uniqueListName(formatDate(new Date().toISOString()), vocabularyStore.getState().data.lists) : ''}
+        selectInitialValue
         placeholder="e.g. Travel"
         submitLabel="Create"
         onSubmit={createList}

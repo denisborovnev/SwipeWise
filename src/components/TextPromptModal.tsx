@@ -11,6 +11,8 @@ interface TextPromptModalProps {
   initialValue?: string;
   placeholder?: string;
   submitLabel?: string;
+  /** Select the initial value, so typing replaces it (for suggested values). */
+  selectInitialValue?: boolean;
   /** Returns an error message to keep the dialog open, or null to close it. */
   onSubmit: (value: string) => string | null;
   onCancel: () => void;
@@ -31,6 +33,7 @@ function PromptDialog({
   initialValue = '',
   placeholder,
   submitLabel = 'Save',
+  selectInitialValue = false,
   onSubmit,
   onCancel,
 }: TextPromptModalProps) {
@@ -47,6 +50,7 @@ function PromptDialog({
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           <TextInput
             autoFocus
+            selectTextOnFocus={selectInitialValue}
             value={value}
             onChangeText={(t) => {
               setValue(t);

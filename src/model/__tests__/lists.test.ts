@@ -1,4 +1,4 @@
-import { groupByMonth, searchLists, sortLists, withWordCounts } from '../lists';
+import { groupByMonth, searchLists, sortLists, uniqueListName, withWordCounts } from '../lists';
 import type { Word, WordList } from '../types';
 
 const local = (month: number, day: number) => new Date(2026, month - 1, day, 12).toISOString();
@@ -40,5 +40,11 @@ describe('lists', () => {
   it('counts words per list', () => {
     const words = [{ listId: 'a' }, { listId: 'a' }, { listId: 'c' }] as Word[];
     expect(withWordCounts(lists, words).map((l) => l.wordCount)).toEqual([2, 0, 1, 0]);
+  });
+
+  it('makes a suggested name unique', () => {
+    expect(uniqueListName('Oct 5, 2026', lists)).toBe('Oct 5, 2026');
+    const taken = [{ name: 'Oct 5, 2026' }, { name: 'oct 5, 2026 (2)' }];
+    expect(uniqueListName('Oct 5, 2026', taken)).toBe('Oct 5, 2026 (3)');
   });
 });
