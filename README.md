@@ -1,0 +1,135 @@
+# MyVocabulary
+
+An Android app (React Native) for growing your foreign-language vocabulary with flashcards.
+Your word lists live in a single Google Spreadsheet that you can edit directly, but the app
+also works fully offline with a local cache and no spreadsheet at all.
+
+---
+
+## Core idea
+
+Each word is a two-sided card:
+
+| Front (prompt)          | Back (answer)                                 |
+|-------------------------|-----------------------------------------------|
+| `машина`                | **car**                                       |
+|                         | *Don't drive your car too fast.*              |
+
+1. The app shows the **front** (definition / translation in your native language).
+2. You try to recall the word, then **tap the card** to flip it.
+3. The **back** shows the word plus optional usage examples.
+4. Once the back is visible, you **swipe**:
+   - **Swipe right** – "I remembered it"
+   - **Swipe left** – "I didn't remember it"
+5. The word's *last revised* time and *remembered* flag are updated, and the next card appears.
+
+---
+
+## Features
+
+### Word lists (groups)
+- Words are organised into **lists** (groups), e.g. "Travel", "Kitchen", "Verbs".
+- Lists can be created, renamed, and filled with words **from inside the app**.
+- Lists can also be created and edited **directly in Google Sheets** – the app picks up the changes on the next sync.
+
+### Study sessions
+When starting a new session you choose which words to practise:
+
+| Filter              | Description                                                                 |
+|---------------------|-----------------------------------------------------------------------------|
+| **Word list**       | One specific list, or **All words** (across all lists).                     |
+| **Added since**     | Only words added after a given date (works for a single list or all words). |
+| **Last revised**    | Only words not revised since a given date (or never revised).               |
+| **Don't remember**  | Only words whose last answer was "didn't remember".                         |
+
+Filters can be combined. The resulting list of words is **frozen** for the session.
+
+### Session continuity
+- When you open the app, it offers to **continue the last session** from the card where you stopped –
+  with the same set of words that was selected last time, even though their *last revised* values
+  have changed since then.
+- A **Restart session** button goes over the same set of words again from the first card.
+- The word set is only recalculated when you explicitly **start a new session** with new filters.
+
+### Tracking progress
+Every word stores:
+- **Added** – when the word was added
+- **Last revised** – when the word was last shown and answered
+- **Remembered** – whether you remembered it the last time it was revised (`yes` / `no` / empty for never revised).
+  The *Don't remember* filter uses only this last answer.
+
+### Storage and sync
+- **Offline first.** All data is kept in a local cache on the device file system. The app is fully
+  usable without any spreadsheet connected.
+- **Google Sheets (optional).** A single spreadsheet document is the "source of truth" when connected:
+  - The **app creates the spreadsheet** ("MyVocabulary") in your Google Drive when you connect.
+    After that you can open and edit it in Google Sheets like any other spreadsheet.
+  - The app can access **only this one file** (plus any other file it created) – not the rest of your
+    Google Drive or your other spreadsheets.
+  - Each **tab** in the spreadsheet = one **word list**.
+  - The spreadsheet can be **connected at any time later** – all local lists are then uploaded to it,
+    one tab per list.
+  - After reinstalling the app (or on a new phone), signing in with the same Google account finds the
+    spreadsheet created earlier and reconnects to it.
+- **Sync rules**
+  - On app start: the cache is loaded instantly, then refreshed from the spreadsheet in the background.
+  - Review results (swipes) are batched and saved to the spreadsheet periodically
+    (and when the app goes to background or a session ends).
+  - **New words / new lists are saved immediately.**
+  - If the device is offline, changes are queued and pushed once the connection is back.
+
+---
+
+## Spreadsheet format
+
+One spreadsheet, one tab per word list. The first row is normally a header:
+
+| Front    | Back | Examples                          | Added               | LastRevised         | Remembered | Id         |
+|----------|------|-----------------------------------|---------------------|---------------------|------------|------------|
+| машина   | car  | Don't drive your car too fast.    | 2026-10-04 20:15    | 2026-10-05 08:01    | yes        | a1b2c3...  |
+| яблоко   | apple| An apple a day keeps the doctor away. | 2026-10-04 20:16 |                     |            | d4e5f6...  |
+
+### Adding words by hand
+When typing words directly into the sheet you only need **Front**, **Back** and (optionally) **Examples**.
+The system columns – **Added**, **LastRevised**, **Remembered**, **Id** – are filled in by the app
+automatically. Even the header row and missing system columns are added by the app, so a brand-new
+tab can contain nothing but words.
+
+**Header detection:** if the first row of a tab has `Front` / `Back` in it, it is treated as the header.
+Otherwise every row is treated as a word (column A = Front, B = Back, C = Examples), and the app inserts
+the header row the next time it pushes data to the spreadsheet. The same applies to system values of
+hand-added rows – they are calculated as soon as the app sees the row and written to the sheet with the
+next push.
+
+- **Front**, **Back** – required.
+- **Examples** – multiple examples are separated by a new line inside the cell (Ctrl+Enter in Sheets).
+- **Added** – set to the time the app first saw the row.
+- **Id** – technical column managed by the app (lets the app match rows even if you sort or move them).
+- Columns are recognised by their header name, so you can reorder them freely.
+- Tabs whose names start with `_` (e.g. `_notes`) are ignored by the app.
+
+---
+
+## Tech stack
+
+- **React Native** + **Expo** (TypeScript), Android target
+- **react-native-gesture-handler** + **react-native-reanimated** – card flip and swipe animations
+- **expo-file-system** – local cache
+- **Zustand** – app state
+- **Google Sign-In** + **Google Sheets API v4** – spreadsheet storage
+
+See [implementationplan.md](implementationplan.md) for the implementation plan.
+
+---
+
+## Development
+
+```bash
+npm install
+npm start            # start Metro; scan the QR code with Expo Go on your phone, or press "a" for an emulator
+npm test             # unit tests (Jest)
+npm run typecheck    # TypeScript
+npm run lint         # ESLint
+```
+
+Local data is stored in the app's documents folder under `myvocabulary/` (`words.json`, `session.json`, `settings.json`).
