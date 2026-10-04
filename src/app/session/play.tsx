@@ -45,7 +45,7 @@ export default function PlayScreen() {
   const canUndo = session.history.length > 0;
 
   const confirmRestart = () =>
-    Alert.alert('Restart session?', 'You will go over the same words again from the first card.', [
+    Alert.alert('Restart session?', 'You will go over the same words again, in a new order.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Restart', onPress: () => sessionStore.getState().restart() },
     ]);

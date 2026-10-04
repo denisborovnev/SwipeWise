@@ -1,3 +1,4 @@
+import { shuffle } from './filter';
 import type { Answer, ReviewState, Session, SessionFilter } from './types';
 
 /**
@@ -5,8 +6,15 @@ import type { Answer, ReviewState, Session, SessionFilter } from './types';
  * values (lastRevisedAt / remembered) are updated in the vocabulary by the caller.
  */
 
-export function createSession(id: string, filter: SessionFilter, wordIds: string[], now: string): Session {
-  return { id, filter, wordIds, currentIndex: 0, history: [], startedAt: now };
+/** The words are shuffled, so every session goes through them in a new order. */
+export function createSession(
+  id: string,
+  filter: SessionFilter,
+  wordIds: string[],
+  now: string,
+  random: () => number,
+): Session {
+  return { id, filter, wordIds: shuffle(wordIds, random), currentIndex: 0, history: [], startedAt: now };
 }
 
 export const isFinished = (session: Session) => session.currentIndex >= session.wordIds.length;
@@ -44,9 +52,16 @@ export function undoLast(session: Session) {
   return { session: next, step };
 }
 
-/** Same words, from the first card again. */
-export function restartSession(session: Session, now: string): Session {
-  return { ...session, currentIndex: 0, history: [], startedAt: now, finishedAt: undefined };
+/** Same words in a new order, from the first card again. */
+export function restartSession(session: Session, now: string, random: () => number): Session {
+  return {
+    ...session,
+    wordIds: shuffle(session.wordIds, random),
+    currentIndex: 0,
+    history: [],
+    startedAt: now,
+    finishedAt: undefined,
+  };
 }
 
 /** Moves past words that no longer exist (e.g. deleted after the session was created). */

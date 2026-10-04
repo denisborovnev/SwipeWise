@@ -2,9 +2,11 @@ import * as ses from '../session';
 
 const T = '2026-10-10T10:00:00.000Z';
 const NEVER = { lastRevisedAt: null, remembered: null };
-const filter = { listId: 'all' as const, shuffle: false };
+const filter = { listId: 'all' as const };
+/** A "random" source that makes shuffle() keep the original order. */
+const KEEP_ORDER = () => 0.9999;
 
-const start = () => ses.createSession('S1', filter, ['a', 'b', 'c'], T);
+const start = () => ses.createSession('S1', filter, ['a', 'b', 'c'], T, KEEP_ORDER);
 
 describe('session', () => {
   it('walks through the words and finishes after the last one', () => {
@@ -22,7 +24,7 @@ describe('session', () => {
   });
 
   it('ignores answers after the end', () => {
-    let s = ses.createSession('S1', filter, ['a'], T);
+    let s = ses.createSession('S1', filter, ['a'], T, KEEP_ORDER);
     s = ses.answerCurrent(s, 'yes', NEVER, T);
     expect(ses.answerCurrent(s, 'no', NEVER, T)).toBe(s);
   });
@@ -38,7 +40,7 @@ describe('session', () => {
   });
 
   it('undo after finishing reopens the session', () => {
-    let s = ses.createSession('S1', filter, ['a'], T);
+    let s = ses.createSession('S1', filter, ['a'], T, KEEP_ORDER);
     s = ses.answerCurrent(s, 'yes', NEVER, T);
     s = ses.undoLast(s)!.session;
     expect(s.finishedAt).toBeUndefined();
@@ -57,10 +59,14 @@ describe('session', () => {
     expect(ses.undoLast(start())).toBeNull();
   });
 
-  it('restarts with the same words', () => {
+  it('shuffles the words when created', () => {
+    expect(ses.createSession('S1', filter, ['a', 'b', 'c'], T, () => 0).wordIds).toEqual(['b', 'c', 'a']);
+  });
+
+  it('restarts with the same words in a new order', () => {
     let s = ses.answerCurrent(start(), 'yes', NEVER, T);
-    s = ses.restartSession(s, '2026-10-11T00:00:00.000Z');
-    expect(s).toMatchObject({ wordIds: ['a', 'b', 'c'], currentIndex: 0, history: [], startedAt: '2026-10-11T00:00:00.000Z' });
+    s = ses.restartSession(s, '2026-10-11T00:00:00.000Z', () => 0);
+    expect(s).toMatchObject({ wordIds: ['b', 'c', 'a'], currentIndex: 0, history: [], startedAt: '2026-10-11T00:00:00.000Z' });
   });
 
   it('skips missing words and finishes when none are left', () => {

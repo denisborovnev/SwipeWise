@@ -52,13 +52,12 @@ interface SessionFilter {
   addedSince?: string;          // applies to a single list or to all
   notRevisedSince?: string;     // includes never-revised words
   onlyNotRemembered?: boolean;  // remembered === 'no' (last answer only)
-  shuffle: boolean;
 }
 
 interface Session {
   id: string;
   filter: SessionFilter;
-  wordIds: string[];       // frozen at session creation
+  wordIds: string[];       // frozen and shuffled at session creation; reshuffled on restart
   currentIndex: number;
   results: Record<string, 'yes' | 'no'>;
   startedAt: string;
@@ -140,15 +139,16 @@ src/
 - [x] On answer: word gets `lastRevisedAt = now`, `remembered`, `dirty`; session advances and is saved (debounced 300 ms + on background). Undo restores the word's previous values.
 - [x] Summary screen: knew / didn't know, list of missed words, "Repeat the N words I missed", "Restart session", "Done".
 - [x] Home screen session card: **Continue** (from the card where you stopped) / **Restart**; after finishing: **Restart session**.
-- [x] List screen: **Practice** button (whole list, shuffled).
+- [x] List screen: **Practice** button (whole list).
 - [x] Words deleted after the session was created are skipped.
 - [x] Session logic in pure functions (`model/session.ts`) + `sessionStore`; filtering (`model/filter.ts`) already implemented here, the filter UI comes in Milestone 4.
 
 ### Milestone 4 – Session filters & continuity ✅
-- [x] New-session screen: word list (All words or one list), Added (any time / today / last 7 / last 30 days / picked date – available for a single list too), Last revised (any time / not today / not in 3 days / a week / a month / not since a picked date; never-revised words always match), "Only words I didn't remember" (last answer = no), Shuffle.
+- [x] New-session screen: word list (All words or one list), Added (any time / today / last 7 / last 30 days / picked date – available for a single list too), Last revised (any time / not today / not in 3 days / a week / a month / not since a picked date; never-revised words always match), "Only words I didn't remember" (last answer = no).
+- [x] Words are always shuffled: every new session (incl. "repeat the words I missed") and every restart goes through the words in a new random order; Continue keeps the current order.
 - [x] Live count on the Start button ("Start · 12 words" / "No words match").
 - [x] The last filter is remembered (`settings.json`) and preselected next time; relative choices ("last 7 days") stay relative.
-- [x] Home screen: **Continue** (resume at `currentIndex`), **Restart** (same word ids from the first card), **New session**. The word set is only recomputed by **New session**.
+- [x] Home screen: **Continue** (resume at `currentIndex`), **Restart** (same words, reshuffled, from the first card), **New session**. The word set is only recomputed by **New session**.
 - [x] Words deleted since the session was created are skipped.
 - [x] Session card describes the filter, e.g. "Demo · added since Oct 2, 2026 · don't remember".
 

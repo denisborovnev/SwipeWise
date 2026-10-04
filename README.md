@@ -42,13 +42,14 @@ When starting a new session you choose which words to practise:
 | **Last revised**    | Only words not revised since a given date (or never revised).               |
 | **Don't remember**  | Only words whose last answer was "didn't remember".                         |
 
-Filters can be combined. The resulting list of words is **frozen** for the session.
+Filters can be combined. The resulting list of words is **frozen** for the session and shown in a
+**new random order** every time a session is started or restarted.
 
 ### Session continuity
 - When you open the app, it offers to **continue the last session** from the card where you stopped –
   with the same set of words that was selected last time, even though their *last revised* values
   have changed since then.
-- A **Restart session** button goes over the same set of words again from the first card.
+- A **Restart session** button goes over the same set of words again from the first card, in a new order.
 - The word set is only recalculated when you explicitly **start a new session** with new filters.
 
 ### Tracking progress

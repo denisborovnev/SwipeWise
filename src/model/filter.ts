@@ -43,19 +43,10 @@ export function shuffle<T>(items: readonly T[], random: () => number): T[] {
   return result;
 }
 
-/**
- * Ids of the words matching the filter. Without shuffling, words come in the order they were
- * added (oldest first), so the order is stable.
- */
-export function selectWords(
-  words: readonly Word[],
-  filter: SessionFilter,
-  now: Date,
-  random: () => number = Math.random,
-): string[] {
-  const selected = words
+/** Ids of the words matching the filter, oldest first (sessions shuffle them). */
+export function selectWords(words: readonly Word[], filter: SessionFilter, now: Date): string[] {
+  return words
     .filter((w) => matchesFilter(w, filter, now))
     .sort((a, b) => a.addedAt.localeCompare(b.addedAt))
     .map((w) => w.id);
-  return filter.shuffle ? shuffle(selected, random) : selected;
 }

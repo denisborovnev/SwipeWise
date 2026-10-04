@@ -47,7 +47,7 @@ export default function NewSessionScreen() {
   const lastFilter = useSession((s) => s.lastFilter);
 
   const [filter, setFilter] = useState<SessionFilter>(() => {
-    const initial = lastFilter ?? { listId: 'all', shuffle: true };
+    const initial = lastFilter ?? { listId: 'all' };
     // The remembered list may have been deleted since.
     return initial.listId === 'all' || lists.some((l) => l.id === initial.listId)
       ? initial
@@ -105,10 +105,7 @@ export default function NewSessionScreen() {
           />
         </View>
 
-        <View style={[styles.switchRow, { borderColor: colors.border }]}>
-          <Text style={[styles.switchTitle, styles.flex, { color: colors.text }]}>Shuffle</Text>
-          <Switch value={filter.shuffle} onValueChange={(shuffle) => update({ shuffle })} accessibilityLabel="Shuffle" />
-        </View>
+        <Text style={{ color: colors.textSecondary }}>Words are shown in a new random order every time.</Text>
       </ScrollView>
 
       <Footer>

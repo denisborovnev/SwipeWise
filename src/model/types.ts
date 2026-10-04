@@ -60,7 +60,6 @@ export interface SessionFilter {
   notRevisedSince?: DateFilter;
   /** Only words whose last answer was "no". */
   onlyNotRemembered?: boolean;
-  shuffle: boolean;
 }
 
 /** The review values of a word before it was answered, so the answer can be undone. */
@@ -78,7 +77,8 @@ export interface SessionStep {
 export interface Session {
   id: string;
   filter: SessionFilter;
-  /** Frozen when the session is created; only "New session" picks a new set of words. */
+  /** Frozen (and shuffled) when the session is created; only "New session" picks a new set of words.
+   *  Restarting keeps the same words but shuffles them again. */
   wordIds: string[];
   /** Index into wordIds of the card being shown; === wordIds.length when finished. */
   currentIndex: number;

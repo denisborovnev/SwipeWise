@@ -31,7 +31,7 @@ describe('repository', () => {
     const repo = createRepository(backend);
     await repo.saveSession({
       id: 'S1',
-      filter: { listId: 'all', shuffle: false },
+      filter: { listId: 'all' },
       wordIds: [],
       currentIndex: 0,
       history: [],

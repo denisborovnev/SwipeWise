@@ -20,12 +20,13 @@ export interface SessionState {
 
   /** Number of words a new session with this filter would contain. */
   countMatching(filter: SessionFilter): number;
-  /** Starts a session with the words matching the filter; returns the number of words (0 = not started). */
+  /** Starts a session with the matching words in random order; returns the number of words (0 = not started). */
   startSession(filter: SessionFilter): number;
   /** Starts a session with given words, e.g. "repeat the ones I missed". */
   startWithWords(filter: SessionFilter, wordIds: string[]): void;
   answer(answer: Answer): void;
   undo(): void;
+  /** Same words, shuffled again, from the first card. */
   restart(): void;
   /** Skips cards whose words were deleted after the session was created. */
   skipMissing(): void;
@@ -86,16 +87,16 @@ export function createSessionStore({
       countMatching: (filter) => selectWords(vocabulary.getState().data.words, filter, now()).length,
 
       startSession(filter) {
-        const wordIds = selectWords(vocabulary.getState().data.words, filter, now(), random);
+        const wordIds = selectWords(vocabulary.getState().data.words, filter, now());
         if (wordIds.length > 0) {
-          setSession(ses.createSession(newId(), filter, wordIds, nowIso()));
+          setSession(ses.createSession(newId(), filter, wordIds, nowIso(), random));
         }
         rememberFilter(filter).catch((e) => console.error('Could not save the filter', e));
         return wordIds.length;
       },
 
       startWithWords(filter, wordIds) {
-        setSession(ses.createSession(newId(), filter, wordIds, nowIso()));
+        setSession(ses.createSession(newId(), filter, wordIds, nowIso(), random));
       },
 
       answer(answer) {
@@ -129,7 +130,7 @@ export function createSessionStore({
       restart() {
         const { session } = get();
         if (session) {
-          setSession(ses.restartSession(session, nowIso()));
+          setSession(ses.restartSession(session, nowIso(), random));
         }
       },
 

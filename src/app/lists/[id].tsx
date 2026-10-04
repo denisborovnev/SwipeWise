@@ -63,7 +63,7 @@ export default function ListScreen() {
     ]);
 
   const practice = () => {
-    sessionStore.getState().startSession({ listId: list.id, shuffle: true });
+    sessionStore.getState().startSession({ listId: list.id });
     router.push('/session/play');
   };
 

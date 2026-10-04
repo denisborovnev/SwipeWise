@@ -20,7 +20,7 @@ function word(id: string, patch: Partial<Word> = {}): Word {
   };
 }
 
-const all: SessionFilter = { listId: 'all', shuffle: false };
+const all: SessionFilter = { listId: 'all' };
 
 describe('resolveDateFilter', () => {
   it('days: 0 means the start of today', () => {
@@ -68,7 +68,6 @@ describe('matchesFilter', () => {
       addedSince: { days: 7 },
       notRevisedSince: { days: 0 },
       onlyNotRemembered: true,
-      shuffle: false,
     };
     const ok = word('a', { addedAt: local(5), lastRevisedAt: local(8), remembered: 'no' });
     expect(matchesFilter(ok, filter, NOW)).toBe(true);
@@ -82,16 +81,16 @@ describe('matchesFilter', () => {
 describe('selectWords', () => {
   const words = [word('c', { addedAt: local(3) }), word('a', { addedAt: local(1) }), word('b', { addedAt: local(2) })];
 
-  it('returns words oldest first without shuffling', () => {
+  it('returns words oldest first', () => {
     expect(selectWords(words, all, NOW)).toEqual(['a', 'b', 'c']);
-  });
-
-  it('shuffles with the given random source', () => {
-    expect(selectWords(words, { ...all, shuffle: true }, NOW, () => 0)).toEqual(['b', 'c', 'a']);
   });
 });
 
 describe('shuffle', () => {
+  it('uses the given random source', () => {
+    expect(shuffle(['a', 'b', 'c'], () => 0)).toEqual(['b', 'c', 'a']);
+  });
+
   it('keeps all items and does not mutate the input', () => {
     const input = [1, 2, 3, 4, 5];
     const result = shuffle(input, Math.random);
