@@ -241,11 +241,19 @@ src/
 - [x] **Initial upload on connect**: the spreadsheet is new (created by the app), so every local list simply becomes a new tab with header + all words. The spreadsheet is created with its tabs (no empty `Sheet1`), plus an `_SwipeWise` info tab explaining the format. When reconnecting to a previously created spreadsheet, the normal merge from Milestone 6 applies.
 
 ### Milestone 6 – Sync engine
-Done so far: **pull** (`sync/mergePull.ts`, `syncActiveCourse` in `store/index.ts`) on app start, course switch, connect and **Sync now**; local bookkeeping for the push (`contentDirty` on words, `dirty` on renamed lists, `deleted` word ids / tab ids). Open: the **push**, pull on return from background, pull-to-refresh.
+Implemented as **one sync = read the whole spreadsheet once, merge, write once** (`syncActiveCourse` in `store/index.ts`):
+1. `readSpreadsheet` – tabs + all values with one `values:batchGet`.
+2. `mergePull` – merges the sheet into the local data (rules below) and lists the fixes for rows / tabs added by hand.
+3. `planSync` – one `spreadsheets.batchUpdate` (delete tabs of deleted lists, rename tabs, insert header rows, add columns, delete rows of deleted / moved words bottom-up, `appendCells` for new words, `addSheet` with a client-chosen tab id for new lists) followed by one `values:batchUpdate` (header cells, Id / Added of hand-typed rows, rows of changed words at their *current* position).
+4. `markPushed` – clears `dirty` / `contentDirty` / list `dirty` / `deleted` of what was written (changes made during the sync stay marked).
+
+Local bookkeeping: `contentDirty` on words (text / list changed), `dirty` on renamed lists, lists without `sheetId` are new, `deleted` holds deleted word ids and tab ids.
+
+Triggers: app start, course switch, connect, **Sync now**, word / list edits (debounced 2 s), session finished, app to background, app back after > 5 min. A sync requested while one runs is run once more afterwards. Open: pull-to-refresh on the home screen, offline queue / retry with backoff (today: retried on the next trigger).
 
 Only the **current course** is synced (another course is synced when the user switches to it).
 
-**Pull (sheet → app):**
+**Pull (sheet → app):** ✅
 - **On app start** (after pushing anything still pending), **when switching to a course**, **when the app returns from background after more than ~5 minutes**, on **pull-to-refresh** on the home screen, on **Sync now**, and after connecting.
 
 1. Read all tabs (except `_*`) with one `values:batchGet`.
@@ -257,7 +265,7 @@ Only the **current course** is synced (another course is synced when the user sw
    - Word local but not in sheet → if it was already synced before, it was deleted in the sheet → delete locally; if never synced → keep and push.
    - New tabs → new lists; removed tabs → remove lists (after confirmation if they contain unsynced changes).
 
-**Push (app → sheet):**
+**Push (app → sheet):** ✅
 - **Word and list edits** (new / edited / deleted words, new / renamed / deleted lists) → right away, debounced ~2 s so a burst of quick-adds goes out as one request.
 - **Review results** (`LastRevised`, `Remembered`) → **when a session finishes**, **when the app goes to background** (sessions are often left unfinished), and **on the next app start** for anything still pending. Not per swipe.
 - Before updating cells, re-read the `Id` column of affected tabs to map id → current row number (the user may have sorted or inserted rows), then send one `values:batchUpdate`.

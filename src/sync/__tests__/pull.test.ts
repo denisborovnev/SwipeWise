@@ -2,7 +2,7 @@ import type { VocabularyData, Word } from '@/model/types';
 
 import { mergePull } from '../mergePull';
 import { parseSheetDate, parseTab } from '../parseTab';
-import { columnLetter, fixRequests } from '../pull';
+import { columnLetter } from '../pull';
 import { COLUMNS, tabValues } from '../sheetFormat';
 
 const NOW = new Date(2026, 9, 10, 12).toISOString();
@@ -155,38 +155,7 @@ describe('mergePull', () => {
   });
 });
 
-describe('fixRequests', () => {
-  it('renames, inserts the header, grows the tab and writes cells', () => {
-    const { requests, values } = fixRequests([
-      {
-        sheetId: 5,
-        title: 'Animals',
-        newTitle: 'Animals - 2026-10-10',
-        insertHeader: true,
-        headerColumns: ['Front', 'Back'],
-        columns: { Front: 0, Back: 1, Examples: 2, Added: 3, LastRevised: 4, Remembered: 5, Id: 6 },
-        columnCount: 7,
-        tabColumnCount: 2,
-        cells: [{ row: 1, column: 'Id', value: 'new1' }],
-      },
-    ]);
-    expect(requests).toEqual([
-      { updateSheetProperties: { properties: { sheetId: 5, title: 'Animals - 2026-10-10' }, fields: 'title' } },
-      {
-        insertDimension: {
-          range: { sheetId: 5, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
-          inheritFromBefore: false,
-        },
-      },
-      { appendDimension: { sheetId: 5, dimension: 'COLUMNS', length: 5 } },
-    ]);
-    expect(values).toEqual([
-      { range: "'Animals - 2026-10-10'!A1", values: [['Front']] },
-      { range: "'Animals - 2026-10-10'!B1", values: [['Back']] },
-      { range: "'Animals - 2026-10-10'!G2", values: [['new1']] },
-    ]);
-  });
-
+describe('columnLetter', () => {
   it('names columns', () => {
     expect([0, 6, 25, 26, 27].map(columnLetter)).toEqual(['A', 'G', 'Z', 'AA', 'AB']);
   });

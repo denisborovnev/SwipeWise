@@ -3,14 +3,18 @@ import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 
 import { createGoogleAuth } from '@/auth/google';
+import { isFinished } from '@/model/session';
+import type { VocabularyData } from '@/model/types';
 import { markUploaded } from '@/model/vocabulary';
 import { createCoursesRepository } from '@/storage/courses';
+import { createDebouncedTask } from '@/storage/debounce';
 import { createFileBackend } from '@/storage/fileBackend';
 import { appProperties, connectCourse } from '@/sync/connect';
 import { createGoogleApi } from '@/sync/googleApi';
 import { createGoogleClient } from '@/sync/googleClient';
 import { mergePull } from '@/sync/mergePull';
-import { readSpreadsheet, writeFixes } from '@/sync/pull';
+import { markPushed, planSync } from '@/sync/planSync';
+import { readSpreadsheet } from '@/sync/pull';
 import { spreadsheetTitle } from '@/sync/sheetFormat';
 
 import { createCourseStore, type CourseState } from './courseStore';
@@ -185,7 +189,8 @@ export async function syncActiveCourse(): Promise<void> {
   if (!course?.spreadsheetId || !googleAccountStore.getState().email) {
     return;
   }
-  if (sync.status === 'syncing' && sync.courseId === course.id) {
+  if (sync.status === 'syncing') {
+    syncAgain = true; // Changes made during a sync go out with the next one.
     return;
   }
   syncStore.setState({ courseId: course.id, status: 'syncing', error: undefined });
@@ -197,15 +202,90 @@ export async function syncActiveCourse(): Promise<void> {
       return;
     }
     const result = mergePull(vocabularyStore.getState().data, tabs, new Date().toISOString(), newId);
-    vocabularyStore.getState().applyPull(result.data);
+    applySync(result.data);
     sessionStore.getState().skipMissing();
-    await writeFixes(googleApi, course.spreadsheetId, result.fixes);
+
+    const usedSheetIds = new Set(tabs.map((t) => t.sheetId));
+    const plan = planSync(result.data, tabs, result.fixes, () => newSheetId(usedSheetIds));
+    await googleApi.batchUpdate(course.spreadsheetId, plan.requests);
+    await googleApi.writeValues(course.spreadsheetId, plan.values);
+    // Clear the "not pushed yet" marks of what was written (changes made meanwhile stay marked).
+    if (courseStore.getState().activeCourseId === course.id) {
+      applySync(markPushed(vocabularyStore.getState().data, plan.pushed));
+    }
     await courseStore.getState().updateCourse(course.id, { lastSyncAt: new Date().toISOString() });
     syncStore.setState({ status: 'idle' });
   } catch (e) {
     console.warn('Sync failed', e);
     syncStore.setState({ status: 'error', error: e instanceof Error ? e.message : String(e) });
   }
+  if (syncAgain) {
+    syncAgain = false;
+    await syncActiveCourse();
+  }
+}
+
+let syncAgain = false;
+/** True while the sync itself changes the words, so that doesn't schedule another sync. */
+let applyingSync = false;
+
+function applySync(data: VocabularyData) {
+  applyingSync = true;
+  try {
+    vocabularyStore.getState().applyPull(data);
+  } finally {
+    applyingSync = false;
+  }
+}
+
+/** Word / list edits that aren't in the spreadsheet yet (review results alone wait for the session end). */
+const hasEditsToPush = (data: VocabularyData) =>
+  (data.deleted?.wordIds.length ?? 0) > 0 ||
+  (data.deleted?.sheetIds.length ?? 0) > 0 ||
+  data.lists.some((l) => l.dirty || l.sheetId === undefined) ||
+  data.words.some((w) => w.contentDirty);
+
+// Edits go out ~2 s after the last change, so a burst of quick-adds is one request.
+const editSync = createDebouncedTask(() => syncActiveCourse(), 2000);
+vocabularyStore.subscribe((state, prev) => {
+  if (!applyingSync && state.status === 'ready' && state.data !== prev.data && hasEditsToPush(state.data)) {
+    editSync.schedule();
+  }
+});
+
+// Review results go out when a session is finished.
+sessionStore.subscribe((state, prev) => {
+  const finished = state.session && isFinished(state.session);
+  const wasFinished = prev.session?.id === state.session?.id && prev.session && isFinished(prev.session);
+  if (finished && !wasFinished) {
+    syncActiveCourse();
+  }
+});
+
+/** Pull again when the app comes back after this long (the sheet may have been edited meanwhile). */
+const RESYNC_AFTER_MS = 5 * 60 * 1000;
+
+/** App went to background / came back: save and push everything; pull again after a while. */
+export function onAppStateChange(state: string) {
+  if (state === 'background') {
+    flushAll().then(() => syncActiveCourse());
+  } else if (state === 'active') {
+    const course = courseStore.getState().courses.find((c) => c.id === courseStore.getState().activeCourseId);
+    const last = course?.lastSyncAt ? Date.parse(course.lastSyncAt) : 0;
+    if (Date.now() - last > RESYNC_AFTER_MS) {
+      syncActiveCourse();
+    }
+  }
+}
+
+/** A random tab id that isn't used yet (Sheets accepts ids chosen by the client). */
+function newSheetId(used: Set<number>): number {
+  let id: number;
+  do {
+    id = 1 + Math.floor(Math.random() * 2_000_000_000);
+  } while (used.has(id));
+  used.add(id);
+  return id;
 }
 
 /** Stops syncing a course; its words stay on the phone and the spreadsheet stays in Drive. */

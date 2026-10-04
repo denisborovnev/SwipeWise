@@ -1,5 +1,4 @@
 import type { GoogleApi } from './googleApi';
-import type { TabFix } from './mergePull';
 import { parseTab, type ParsedTab } from './parseTab';
 import { tabRange } from './sheetFormat';
 
@@ -25,51 +24,4 @@ export function columnLetter(index: number): string {
     n = Math.floor((n - 1) / 26);
   }
   return letters;
-}
-
-/**
- * The requests that apply the fixes found while pulling: structure first (rename tab, insert the
- * header row, add columns to narrow tabs), then the header / Id / Added cells.
- */
-export function fixRequests(fixes: TabFix[]): {
-  requests: object[];
-  values: { range: string; values: string[][] }[];
-} {
-  const requests: object[] = [];
-  const values: { range: string; values: string[][] }[] = [];
-  for (const fix of fixes) {
-    const title = fix.newTitle ?? fix.title;
-    if (fix.newTitle) {
-      requests.push({
-        updateSheetProperties: { properties: { sheetId: fix.sheetId, title: fix.newTitle }, fields: 'title' },
-      });
-    }
-    if (fix.insertHeader) {
-      requests.push({
-        insertDimension: {
-          range: { sheetId: fix.sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
-          inheritFromBefore: false,
-        },
-      });
-    }
-    if (fix.columnCount > fix.tabColumnCount) {
-      requests.push({
-        appendDimension: { sheetId: fix.sheetId, dimension: 'COLUMNS', length: fix.columnCount - fix.tabColumnCount },
-      });
-    }
-    const cell = (column: number, row: number) => `${tabRange(title)}!${columnLetter(column)}${row + 1}`;
-    for (const column of fix.headerColumns) {
-      values.push({ range: cell(fix.columns[column], 0), values: [[column]] });
-    }
-    for (const c of fix.cells) {
-      values.push({ range: cell(fix.columns[c.column], c.row), values: [[c.value]] });
-    }
-  }
-  return { requests, values };
-}
-
-export async function writeFixes(api: GoogleApi, spreadsheetId: string, fixes: TabFix[]): Promise<void> {
-  const { requests, values } = fixRequests(fixes);
-  await api.batchUpdate(spreadsheetId, requests);
-  await api.writeValues(spreadsheetId, values);
 }

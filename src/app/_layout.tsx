@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { flushAll, loadAll, useCourses, useSession, useVocabulary } from '@/store';
+import { flushAll, loadAll, onAppStateChange, useCourses, useSession, useVocabulary } from '@/store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,9 +23,11 @@ export default function RootLayout() {
 
     // Don't lose pending changes when the app is backgrounded (and possibly killed).
     const sub = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') {
+      if (state === 'inactive') {
         flushAll();
       }
+      // Background: save and push to the spreadsheet; active again: pull if it's been a while.
+      onAppStateChange(state);
     });
     return () => sub.remove();
   }, []);
