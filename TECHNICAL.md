@@ -204,6 +204,8 @@ npm run lint         # ESLint
   npx expo prebuild --platform android
   cd android && ./gradlew assembleRelease    # needs JAVA_HOME = JDK 21
   ```
+  For phones only (smaller APK, ~1/3 of the size): `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`
+  – arm64 covers practically all Android phones of the last years (not x86 emulators).
   The APK is `android/app/build/outputs/apk/release/app-release.apk`. Raise `version` / `android.versionCode`
   in `app.json` for every new release, so the phone accepts it as an update.
 
