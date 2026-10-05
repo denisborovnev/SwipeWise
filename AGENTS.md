@@ -5,6 +5,7 @@ This is an Expo/React Native mobile application. Prioritize mobile-first pattern
 - [TECHNICAL.md](TECHNICAL.md) – how the app behaves (courses, lists, sessions, sync rules), the Google Sheets format, tech stack and development setup. Read it before changing app behaviour, and keep it up to date when behaviour changes.
 - [implementationplan.md](implementationplan.md) – data model, project structure, milestones and progress.
 - [README.md](README.md) – short, user-facing description of the app.
+- [PUBLISHING.md](PUBLISHING.md) – how to build an app bundle and publish on Google Play.
 
 ## Expo has changed — do not trust your training data
 

@@ -205,6 +205,8 @@ npm run lint         # ESLint
   The APK is `android/app/build/outputs/apk/release/app-release.apk`. Raise `version` / `android.versionCode`
   in `app.json` for every new release, so the phone accepts it as an update.
 
+**Google Play:** see [PUBLISHING.md](PUBLISHING.md).
+
 **App icon:** `assets/icon-source.html` draws the icon, the adaptive icon layers, the splash image and the
 favicon (SVG); open it in a browser and export with `renderPng(name, size)` to `assets/images/`.
 

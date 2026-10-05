@@ -40,15 +40,17 @@ words you keep forgetting.
   **Restart** goes through the same words again; **Recent** brings back any of your last 5 sessions.
 - **Results** – after a session you see what you knew and can repeat just the words you missed.
 - **Works offline** – everything is stored on your phone; no account is needed.
-- **Google Sheets** *(coming soon)* – connect a course to a spreadsheet in your Google Drive. Add or fix
+- **Google Sheets** – connect a course to a spreadsheet in your Google Drive. Add or fix
   words on your computer and the app picks them up; your progress is saved back to the sheet. The app can
   only see the spreadsheets it created, nothing else in your Drive.
 
 ## Status
 
-The app works fully offline. Google Sheets sync is being built next.
+The app works fully offline and syncs each course with its own Google Spreadsheet. Next: restoring courses
+from Google Drive after a reinstall; ideas: pronunciation, irregular verb forms.
 
 ## More
 
 - [TECHNICAL.md](TECHNICAL.md) – detailed behaviour, spreadsheet format, tech stack and development setup
 - [implementationplan.md](implementationplan.md) – implementation plan and progress
+- [PUBLISHING.md](PUBLISHING.md) – publishing on Google Play
