@@ -1,12 +1,32 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { AppState, useColorScheme } from 'react-native';
+import { AppState, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { Button } from '@/components/Button';
+import { Spacing, useThemeColors } from '@/constants/theme';
 import { flushAll, loadAll, onAppStateChange, useCourses, useSession, useVocabulary } from '@/store';
 
 SplashScreen.preventAutoHideAsync();
+
+/** Shown instead of a screen that crashed, so the app never ends on a blank / red screen. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const colors = useThemeColors();
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+  return (
+    <View style={[styles.error, { backgroundColor: colors.background }]}>
+      <Text style={[styles.errorTitle, { color: colors.text }]}>Something went wrong</Text>
+      <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+        Your words are safe on this phone. Try again, and if it keeps happening, restart the app.
+      </Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>{error.message}</Text>
+      <Button title="Try again" icon="refresh" onPress={retry} />
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -58,3 +78,8 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  error: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.lg },
+  errorTitle: { fontSize: 20, fontWeight: '700' },
+});

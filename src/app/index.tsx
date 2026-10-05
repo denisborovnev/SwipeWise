@@ -12,7 +12,7 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
 import type { Course } from '@/model/types';
-import { syncActiveCourse, useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
+import { loadAll, syncActiveCourse, useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
 import { plural } from '@/utils/format';
 
 /** How many of the newest lists the home screen shows; the rest are under "All lists". */
@@ -39,7 +39,10 @@ export default function HomeScreen() {
   if (coursesStatus === 'error' || status === 'error') {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.danger }}>Could not load your words: {coursesError ?? error}</Text>
+        <Text style={{ color: colors.danger, textAlign: 'center' }}>
+          Could not load your words: {coursesError ?? error}
+        </Text>
+        <Button title="Try again" icon="refresh" onPress={() => loadAll()} />
       </View>
     );
   }
@@ -49,7 +52,11 @@ export default function HomeScreen() {
   }
 
   if (status !== 'ready' || !course) {
-    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
   }
 
   return (
@@ -210,7 +217,7 @@ const styles = StyleSheet.create({
   welcome: { gap: Spacing.md },
   welcomeTitle: { fontSize: 24, fontWeight: '700' },
   welcomeText: { fontSize: 16, textAlign: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, padding: Spacing.lg },
   content: { padding: Spacing.md, gap: Spacing.sm },
   header: { marginBottom: Spacing.sm, gap: Spacing.sm },
   sectionTitle: { fontSize: 20, fontWeight: '700' },

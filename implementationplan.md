@@ -197,7 +197,7 @@ src/
 - [x] Course screen: language picker with search, name (unique, defaults to the language), delete (with confirmation; not for the only course).
 
 ### Milestone 5 – Google Sheets connection
-- [ ] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
+- [x] Set `slug` in `app.json` to `swipewise` (kept as `myvocabulary` while on Expo Go, because Expo Go keeps each project's files under its slug and changing it would hide the existing test data).
 - [x] Switch from Expo Go to an Android **development build**: `expo-dev-client` + `npx expo run:android`, built with **JDK 21** (`JAVA_HOME`; e.g. the Temurin 21 in `~/.jdks`). The system Java 8 is too old, and Android Studio's bundled JBR is Java 25, whose "restricted method" warning makes the CMake configure step of react-native-screens / worklets fail. `android/` is generated (git-ignored), never edited by hand.
 - [x] `@react-native-google-signin/google-signin` installed. Its Expo config plugin is **not** used: without Firebase it only configures iOS (and requires an iOS client id); Android needs no native config.
 - [x] Google Cloud project: **Sheets API** and **Drive API** enabled; OAuth consent screen (External, Testing mode, the user as test user, scope `drive.file`); OAuth clients:
@@ -274,11 +274,11 @@ Only the **current course** is synced (another course is synced when the user sw
 **UI:** sync status icons (Courses screen rows, home header) and "Last synced …" on the course screen – see Milestone 5.
 
 ### Milestone 7 – Polish & release
-- [ ] Empty states, error messages, loading skeletons.
+- [x] Empty states, error messages (incl. an error boundary with "Try again"), loading spinners.
 - [ ] Dark mode.
-- [ ] App icon, splash screen.
-- [ ] Release build via EAS (`.aab` / `.apk`), add release SHA-1 to the OAuth client.
-- [ ] Manual test checklist: offline usage, connect later, edit in sheet → sync, add rows by hand with only Front/Back → system columns filled in, new tab without header → words read correctly and header added on the next push, reinstall app → reconnects to the same spreadsheet, sort rows in sheet → swipe updates go to the right rows, kill app mid-session → continue from the same card, restart session.
+- [x] App icon (two cards, the front one swiped with a check mark), adaptive icon + monochrome layer, splash screen; source in `assets/icon-source.html`.
+- [x] Release APK built locally, signed with an own key kept in `~/.swipewise/` (config plugin `plugins/withReleaseSigning.js`); its SHA-1 is added as a second Android OAuth client. (EAS / Play Store `.aab` later if needed.)
+- [x] Manual test checklist (in TECHNICAL.md): offline usage, connect later, edit in sheet → sync, add rows by hand with only Front/Back → system columns filled in, new tab without header → words read correctly and header added on the next push, reinstall app → reconnects to the same spreadsheet, sort rows in sheet → swipe updates go to the right rows, kill app mid-session → continue from the same card, restart session.
 
 ### Milestone 8 – Restore courses after a reinstall
 Only once the app has proven itself in daily use.
@@ -301,7 +301,16 @@ Only once the app has proven itself in daily use.
 
 ## 5. Ideas for later
 - Spaced repetition (Leitner boxes / SM-2) using a `correctStreak` column and a "due today" filter.
-- Text-to-speech for the word and examples (`expo-speech`), in the course's language.
+- **Word pronunciation** – a 🔊 button on the back of the card (and in the word list) that reads the word, and
+  optionally the examples, aloud with the phone's text-to-speech (`expo-speech`) in the course's language
+  (`Course.language`, e.g. `en-GB` vs `en-US` accent). Option: read the word automatically when the card flips.
+  Works offline when the phone has the voice installed; if the language has no voice, hide the button and explain
+  how to install one (Android Settings → Text-to-speech). Needs a native rebuild (new module).
+- **Irregular verbs (English courses)** – when the back of a card is an English irregular verb ("go", "to go",
+  "went"…), show its three forms under the word: **go – went – gone**. A built-in list of the ~200 common irregular
+  verbs (base, past simple, past participle, incl. variants like *learnt / learned*), matched case-insensitively
+  after stripping "to "; any of the three forms matches. Only for courses whose language is English (`en-*`).
+  Later: a "verbs" filter for sessions ("only irregular verbs"), and a mode that asks for the forms.
 - Statistics screen (words learned per day, hardest words).
 - Bulk import (paste "front – back" lines).
 - Home-screen widget / daily reminder notification.

@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SwipeWise icon</title>
+<!-- Source of the app icon, adaptive icon layers, splash image and favicon in assets/images.
+     Open in a browser to preview; window.renderPng(name, size) returns a PNG data URL. -->
+<style>
+  body { font-family: sans-serif; background: #ddd; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; }
+  figure { margin: 0; text-align: center; font-size: 12px; }
+  img { width: 192px; height: 192px; display: block; }
+  .dark { background: #222; color: #ddd; }
+</style>
+</head>
+<body>
+<script>
+// Artwork on a 1024 grid. The glyph (two cards, the front one swiped right with a check mark) is
+// kept inside the central 66% so Android's adaptive-icon masks never cut it.
+const BLUE = '#208AEF';
+const BLUE_DARK = '#1565C0';
+const GREEN = '#2E9E5B';
+
+function glyph({ mono = false, scale = 1 } = {}) {
+  const white = mono ? '#FFFFFF' : '#FFFFFF';
+  const back = mono ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.55)';
+  const check = mono ? 'none' : GREEN;
+  const lines = mono ? '#FFFFFF' : 'rgba(255,255,255,0.85)';
+  return `
+  <g transform="translate(512 512) scale(${scale}) translate(-512 -512)">
+    <!-- back card -->
+    <rect x="330" y="300" width="300" height="400" rx="44" fill="${back}" transform="rotate(-12 480 500)"/>
+    <!-- front card, swiped to the right -->
+    <g transform="rotate(10 560 520)">
+      <rect x="410" y="320" width="300" height="400" rx="44" fill="${white}"/>
+      ${mono ? '' : `<path d="M487 525 l55 55 l100 -112" fill="none" stroke="${check}" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>`}
+    </g>
+    <!-- motion lines -->
+    <g stroke="${lines}" stroke-width="26" stroke-linecap="round">
+      <line x1="232" y1="420" x2="300" y2="420"/>
+      <line x1="200" y1="500" x2="292" y2="500"/>
+      <line x1="232" y1="580" x2="300" y2="580"/>
+    </g>
+  </g>`;
+}
+
+const background = `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="${BLUE}"/><stop offset="1" stop-color="${BLUE_DARK}"/></linearGradient></defs>`;
+
+const svgs = {
+  // Full icon (legacy / Play Store): rounded square background + glyph.
+  icon: `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${background}
+    <rect width="1024" height="1024" fill="url(#bg)"/>${glyph()}</svg>`,
+  // Adaptive icon layers.
+  'android-icon-foreground': `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${glyph({ scale: 0.78 })}</svg>`,
+  'android-icon-background': `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${background}
+    <rect width="1024" height="1024" fill="url(#bg)"/></svg>`,
+  'android-icon-monochrome': `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${glyph({ mono: true, scale: 0.78 })}</svg>`,
+  // Splash: glyph only, on the blue splash background.
+  'splash-icon': `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${glyph()}</svg>`,
+  favicon: `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 1024 1024">${background}
+    <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>${glyph()}</svg>`,
+};
+
+window.renderPng = async (name, size) => {
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgs[name]);
+  await img.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+  return canvas.toDataURL('image/png');
+};
+
+// Preview: the full icon, the adaptive icon as a launcher would mask it (circle), and the splash.
+for (const [name, svg] of Object.entries(svgs)) {
+  const fig = document.createElement('figure');
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const masked = name === 'android-icon-foreground'
+    ? `<div style="width:192px;height:192px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,${BLUE},${BLUE_DARK})"><img src="${src}"></div>`
+    : name === 'android-icon-monochrome'
+      ? `<div style="width:192px;height:192px;border-radius:50%;overflow:hidden;background:#3b4b5c"><img src="${src}"></div>`
+      : name === 'splash-icon'
+        ? `<div style="width:192px;height:192px;background:${BLUE}"><img src="${src}"></div>`
+        : `<img src="${src}" style="border-radius:${name === 'icon' ? 40 : 0}px">`;
+  fig.innerHTML = masked + `<figcaption>${name}</figcaption>`;
+  document.body.appendChild(fig);
+}
+</script>
+</body>
+</html>

@@ -190,8 +190,48 @@ npm run typecheck    # TypeScript
 npm run lint         # ESLint
 ```
 
+**Release APK** (to install on a phone)
+- Release builds are signed with the key in `~/.swipewise/` (`swipewise-release.jks` + `signing.properties`
+  with the passwords), outside the repo; `plugins/withReleaseSigning.js` points the generated Gradle build at it.
+  Without that folder, release builds fall back to the debug key. **Back the folder up** – without the key,
+  installed apps can't be updated (only uninstalled and installed again).
+- Its SHA-1 must be registered as an Android OAuth client in Google Cloud (package `com.swipewise.app`),
+  next to the debug one, or Google sign-in fails in the release app.
+- Build (all CPU types, JS bundled into the app, the `.env` client id baked in):
+  ```bash
+  npx expo prebuild --platform android
+  cd android && ./gradlew assembleRelease    # needs JAVA_HOME = JDK 21
+  ```
+  The APK is `android/app/build/outputs/apk/release/app-release.apk`. Raise `version` / `android.versionCode`
+  in `app.json` for every new release, so the phone accepts it as an update.
+
+**App icon:** `assets/icon-source.html` draws the icon, the adaptive icon layers, the splash image and the
+favicon (SVG); open it in a browser and export with `renderPng(name, size)` to `assets/images/`.
+
 **Sample data:** in a development build, opening the link `swipewise://dev-seed` adds 10 sample lists
 to the current course (e.g. `adb shell am start -a android.intent.action.VIEW -d swipewise://dev-seed`).
 
 Local data is stored in the app's documents folder under `myvocabulary/`: `courses.json` (the courses and
 the current one) and a folder per course, `courses/<id>/`, with `words.json`, `sessions.json` and `settings.json`.
+
+## Manual test checklist
+
+Before a release, on a phone or emulator:
+
+- [ ] **Offline:** airplane mode → add a list and words, practise, edit, delete – everything works; the cloud icon
+      turns red only for connected courses.
+- [ ] **Connect later:** a course with words → Connect Google Sheets → the spreadsheet has an `_SwipeWise` tab and
+      one tab per list with all words.
+- [ ] **Edit in the sheet → app:** change a word, add a row with only Front / Back, add a tab without header and
+      without date → pull to refresh → the app shows them; the sheet gets Id / Added, a header row and the date in
+      the tab name.
+- [ ] **App → sheet:** add / edit / delete words, rename / merge / delete lists → a few seconds later the sheet shows it.
+- [ ] **Sorted sheet:** sort a tab by Back → practise words of that list → LastRevised / Remembered land on the
+      right rows.
+- [ ] **Session:** kill the app mid-session → it continues at the same card; Restart reshuffles; finishing pushes
+      the results.
+- [ ] **Courses:** two courses with different spreadsheets; switching syncs the other one; words never mix.
+- [ ] **Errors:** sync while offline → error shown, retried later; sign out → red cloud; sign in again → syncs.
+- [ ] **Dark mode** and a small screen: all screens readable, nothing cut off.
+- [ ] **Release APK:** installs over the previous version; Google sign-in works (release SHA-1 registered).
+
