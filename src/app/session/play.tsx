@@ -1,7 +1,6 @@
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, IconButton } from '@/components/Button';
 import { FlashCard, type FlashCardHandle } from '@/components/FlashCard';
@@ -12,7 +11,6 @@ import { sessionStore, useCourses, useSession, useVocabulary } from '@/store';
 
 export default function PlayScreen() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const session = useSession((s) => s.session);
   const wordId = session ? currentWordId(session) : undefined;
   const word = useVocabulary((s) => (wordId ? s.data.words.find((w) => w.id === wordId) : undefined));
@@ -58,7 +56,7 @@ export default function PlayScreen() {
     ]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom + Spacing.md }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: Spacing.md }]}>
       <Stack.Screen
         options={{
           title: `${session.currentIndex + 1} / ${total}`,

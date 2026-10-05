@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Spacing, useThemeColors } from '@/constants/theme';
@@ -31,6 +32,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const coursesStatus = useCourses((s) => s.status);
   const hasCourse = useCourses((s) => s.activeCourseId !== null);
   const vocabularyStatus = useVocabulary((s) => s.status);
@@ -64,7 +67,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         {/* Dark icons on light screens and vice versa. */}
         <StatusBar style="auto" />
-        <Stack>
+        {/* Every screen ends above Android's navigation / gesture bar (the app is drawn edge to edge). */}
+        <Stack screenOptions={{ contentStyle: { paddingBottom: insets.bottom, backgroundColor: colors.background } }}>
           <Stack.Screen name="index" options={{ title: 'SwipeWise' }} />
           <Stack.Screen name="courses" options={{ title: 'Courses' }} />
           <Stack.Screen name="course" options={{ presentation: 'modal' }} />
