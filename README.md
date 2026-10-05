@@ -39,6 +39,8 @@ words you keep forgetting.
   Switch courses from the top of the home screen.
 - **Word lists** – group words into lists, e.g. one list per lesson. A new list is named after today's
   date unless you give it a name. Lists can be renamed, deleted and **merged** (All lists → Select).
+- **Pronunciation** – tap 🔊 to hear the word in the language you're learning (your phone's voices, works
+  offline); optionally read aloud whenever a card is flipped.
 - **Quick adding** – type the native word, the foreign word and optional examples; the form stays open
   for the next word.
 - **Flexible sessions** – practise all words or a few selected lists, and narrow them down:
@@ -57,7 +59,7 @@ words you keep forgetting.
 ## Status
 
 The app works fully offline and syncs each course with its own Google Spreadsheet. Next: restoring courses
-from Google Drive after a reinstall; ideas: pronunciation, irregular verb forms.
+from Google Drive after a reinstall; ideas: irregular verb forms for English, human recordings for pronunciation.
 
 ## More
 

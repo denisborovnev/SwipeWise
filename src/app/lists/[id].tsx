@@ -8,7 +8,8 @@ import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import type { Word } from '@/model/types';
 import { validateListName } from '@/model/validation';
-import { sessionStore, useVocabulary, vocabularyStore } from '@/store';
+import { SPEECH_RATES, speak } from '@/speech/pronounce';
+import { sessionStore, useCourses, useVocabulary, vocabularyStore } from '@/store';
 import { plural } from '@/utils/format';
 
 export default function ListScreen() {
@@ -17,6 +18,9 @@ export default function ListScreen() {
   const data = useVocabulary((s) => s.data);
   const list = data.lists.find((l) => l.id === id);
   const [renaming, setRenaming] = useState(false);
+  const course = useCourses((s) => s.courses.find((c) => c.id === s.activeCourseId));
+  const language = course?.language ?? null;
+  const rate = course?.speech?.rate ?? SPEECH_RATES.normal;
 
   const words = useMemo(
     () => data.words.filter((w) => w.listId === id).sort((a, b) => b.addedAt.localeCompare(a.addedAt)),
@@ -88,7 +92,13 @@ export default function ListScreen() {
         ListEmptyComponent={
           <Text style={{ color: colors.textSecondary }}>This list is empty. Add your first word below.</Text>
         }
-        renderItem={({ item }) => <WordRow word={item} onPress={() => openWord(item.id)} />}
+        renderItem={({ item }) => (
+          <WordRow
+            word={item}
+            onPress={() => openWord(item.id)}
+            onSpeak={language ? () => speak(item.back, language, rate) : undefined}
+          />
+        )}
       />
       <Footer>
         <Button title="Add words" icon="add" variant="secondary" onPress={() => openWord()} style={styles.flex} />
@@ -105,7 +115,7 @@ export default function ListScreen() {
   );
 }
 
-function WordRow({ word, onPress }: { word: Word; onPress: () => void }) {
+function WordRow({ word, onPress, onSpeak }: { word: Word; onPress: () => void; onSpeak?: () => void }) {
   const colors = useThemeColors();
   const statusColor =
     word.remembered === 'yes' ? colors.success : word.remembered === 'no' ? colors.danger : colors.border;
@@ -126,6 +136,14 @@ function WordRow({ word, onPress }: { word: Word; onPress: () => void }) {
       </View>
       {word.examples.length > 0 && (
         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{plural(word.examples.length, 'example')}</Text>
+      )}
+      {onSpeak && (
+        <IconButton
+          icon="volume-medium-outline"
+          accessibilityLabel={`Pronounce ${word.back}`}
+          color={colors.primary}
+          onPress={onSpeak}
+        />
       )}
     </Pressable>
   );

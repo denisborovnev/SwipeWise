@@ -7,7 +7,8 @@ import { Button, IconButton } from '@/components/Button';
 import { FlashCard, type FlashCardHandle } from '@/components/FlashCard';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { currentWordId, isFinished } from '@/model/session';
-import { sessionStore, useSession, useVocabulary } from '@/store';
+import { SPEECH_RATES, speak, stopSpeaking } from '@/speech/pronounce';
+import { sessionStore, useCourses, useSession, useVocabulary } from '@/store';
 
 export default function PlayScreen() {
   const colors = useThemeColors();
@@ -18,6 +19,9 @@ export default function PlayScreen() {
   // Which card is flipped; keyed by card so it resets when the card changes (next card, undo, restart).
   const [flipped, setFlipped] = useState<{ cardKey: string; back: boolean } | null>(null);
   const cardRef = useRef<FlashCardHandle>(null);
+  const course = useCourses((s) => s.courses.find((c) => c.id === s.activeCourseId));
+  const language = course?.language ?? null;
+  const rate = course?.speech?.rate ?? SPEECH_RATES.normal;
 
   const finished = !session || isFinished(session);
   const wordMissing = !!wordId && !word;
@@ -28,6 +32,9 @@ export default function PlayScreen() {
       sessionStore.getState().skipMissing();
     }
   }, [wordMissing]);
+
+  // Don't keep reading a card that is gone.
+  useEffect(() => stopSpeaking, [wordId]);
 
   useEffect(() => {
     if (finished) {
@@ -83,7 +90,13 @@ export default function PlayScreen() {
           key={cardKey}
           ref={cardRef}
           word={word}
-          onFlip={(back) => setFlipped({ cardKey, back })}
+          onFlip={(back) => {
+            setFlipped({ cardKey, back });
+            if (back && language && course?.speech?.autoPlay) {
+              speak(word.back, language, rate);
+            }
+          }}
+          onSpeak={language ? () => speak(word.back, language, rate) : undefined}
           onAnswer={(answer) => sessionStore.getState().answer(answer)}
         />
       </View>

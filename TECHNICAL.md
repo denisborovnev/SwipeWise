@@ -46,6 +46,13 @@ Each word is a two-sided card:
   in your Google Drive).
 - Everything below works **inside the current course**.
 
+### Pronunciation
+- 🔊 on the back of a card and next to every word in a list reads the word (the back) aloud with the phone's
+  text-to-speech, in the course's language (`en-GB`, `es-ES`, …). Text in parentheses is skipped.
+- Course screen → **Pronunciation**: read the word automatically when a card is flipped, speed (slow / normal),
+  test the voice. If the phone has no voice for the language, the app explains how to install one and opens
+  Android's text-to-speech settings.
+
 ### Word lists (groups)
 - Words are organised into **lists** (groups), e.g. "Travel", "Kitchen", "Verbs".
 - Lists can be created, renamed, and filled with words **from inside the app**.

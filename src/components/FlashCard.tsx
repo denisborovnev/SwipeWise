@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useImperativeHandle, useState, type Ref } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -28,6 +29,8 @@ interface FlashCardProps {
   word: Word;
   onAnswer: (answer: Answer) => void;
   onFlip?: (showingBack: boolean) => void;
+  /** Reads the word aloud; shows a 🔊 button on the back when set. */
+  onSpeak?: () => void;
   ref?: Ref<FlashCardHandle>;
 }
 
@@ -35,7 +38,7 @@ interface FlashCardProps {
  * Tap to flip between front and back. Once the back is shown, swipe right = "I remembered it",
  * swipe left = "I didn't". Render with `key={word.id}` so every word starts on the front.
  */
-export function FlashCard({ word, onAnswer, onFlip, ref }: FlashCardProps) {
+export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardProps) {
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const [showingBack, setShowingBack] = useState(false);
@@ -97,8 +100,19 @@ export function FlashCard({ word, onAnswer, onFlip, ref }: FlashCardProps) {
       }
     });
 
+  // The 🔊 button has its own tap; the card's tap waits for it to fail, so pressing 🔊 doesn't flip.
+  const speakTap = Gesture.Tap()
+    .enabled(showingBack && !!onSpeak)
+    .maxDistance(10)
+    .onEnd(() => {
+      if (onSpeak) {
+        scheduleOnRN(onSpeak);
+      }
+    });
+
   const tap = Gesture.Tap()
     .enabled(!answered)
+    .requireExternalGestureToFail(speakTap)
     // A drag is not a tap (otherwise swiping the front side would flip the card).
     .maxDistance(10)
     .onEnd(() => {
@@ -143,6 +157,19 @@ export function FlashCard({ word, onAnswer, onFlip, ref }: FlashCardProps) {
         <Animated.View style={[face, backStyle]} pointerEvents={showingBack ? 'auto' : 'none'}>
           <Text style={[styles.smallText, { color: colors.textSecondary }]}>{word.front}</Text>
           <Text style={[styles.mainText, { color: colors.text }]}>{word.back}</Text>
+          {onSpeak && (
+            <GestureDetector gesture={speakTap}>
+              <View
+                style={[styles.speak, { borderColor: colors.border }]}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={`Pronounce ${word.back}`}
+                accessibilityActions={[{ name: 'activate' }]}
+                onAccessibilityAction={() => onSpeak()}>
+                <Ionicons name="volume-high-outline" size={26} color={colors.primary} />
+              </View>
+            </GestureDetector>
+          )}
           {word.examples.length > 0 && (
             <View style={styles.examples}>
               {word.examples.map((example, i) => (
@@ -184,6 +211,14 @@ const styles = StyleSheet.create({
   mainText: { fontSize: 36, fontWeight: '700', textAlign: 'center' },
   smallText: { fontSize: 18, textAlign: 'center' },
   examples: { gap: Spacing.sm, marginTop: Spacing.sm },
+  speak: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   example: { fontSize: 17, fontStyle: 'italic', textAlign: 'center' },
   overlay: {
     ...StyleSheet.absoluteFill,

@@ -5,6 +5,7 @@ import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, T
 
 import { Button } from '@/components/Button';
 import { GoogleSheetsSection } from '@/components/GoogleSheetsSection';
+import { PronunciationSection } from '@/components/PronunciationSection';
 import { LanguagePickerModal } from '@/components/LanguagePickerModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { defaultCourseName, findLanguage, languageName } from '@/model/languages';
@@ -133,6 +134,7 @@ export default function CourseScreen() {
           <Button title={isEdit ? 'Save' : 'Create course'} onPress={save} disabled={saving} style={styles.flex} />
         </View>
 
+        {course && <PronunciationSection course={course} />}
         {course && <GoogleSheetsSection course={course} />}
       </ScrollView>
 

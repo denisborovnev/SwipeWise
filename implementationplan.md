@@ -282,6 +282,14 @@ Only the **current course** is synced (another course is synced when the user sw
 - [x] Release APK built locally, signed with an own key kept in `~/.swipewise/` (config plugin `plugins/withReleaseSigning.js`); its SHA-1 is added as a second Android OAuth client. (EAS / Play Store `.aab` later if needed.)
 - [x] Manual test checklist (in TECHNICAL.md): offline usage, connect later, edit in sheet → sync, add rows by hand with only Front/Back → system columns filled in, new tab without header → words read correctly and header added on the next push, reinstall app → reconnects to the same spreadsheet, sort rows in sheet → swipe updates go to the right rows, kill app mid-session → continue from the same card, restart session.
 
+### Pronunciation ✅
+- [x] `expo-speech` (the phone's text-to-speech; offline once the voice is installed) in the course's language (`Course.language`, so `en-GB` and `en-US` sound different).
+- [x] 🔊 on the back of a card (its own tap gesture; the card's flip tap waits for it to fail) and on every word in a list.
+- [x] Course screen → Pronunciation: "Read the word when a card is flipped", speed (slow / normal), "Test the voice"; settings stored per course (`Course.speech`).
+- [x] Text in parentheses is not read ("to go (on foot)" → "to go").
+- [x] No voice for the language → the course screen explains it and opens Android's text-to-speech settings.
+- Later: human recordings and IPA for English words (Free Dictionary API), with the phone's voice as fallback.
+
 ### Milestone 8 – Restore courses after a reinstall
 Only once the app has proven itself in daily use.
 - [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
@@ -303,11 +311,6 @@ Only once the app has proven itself in daily use.
 
 ## 5. Ideas for later
 - Spaced repetition (Leitner boxes / SM-2) using a `correctStreak` column and a "due today" filter.
-- **Word pronunciation** – a 🔊 button on the back of the card (and in the word list) that reads the word, and
-  optionally the examples, aloud with the phone's text-to-speech (`expo-speech`) in the course's language
-  (`Course.language`, e.g. `en-GB` vs `en-US` accent). Option: read the word automatically when the card flips.
-  Works offline when the phone has the voice installed; if the language has no voice, hide the button and explain
-  how to install one (Android Settings → Text-to-speech). Needs a native rebuild (new module).
 - **Irregular verbs (English courses)** – when the back of a card is an English irregular verb ("go", "to go",
   "went"…), show its three forms under the word: **go – went – gone**. A built-in list of the ~200 common irregular
   verbs (base, past simple, past participle, incl. variants like *learnt / learned*), matched case-insensitively

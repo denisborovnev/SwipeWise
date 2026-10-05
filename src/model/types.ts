@@ -1,3 +1,11 @@
+/** Pronunciation settings of a course (the phone's text-to-speech). */
+export interface SpeechSettings {
+  /** Read the word aloud when a card is flipped. */
+  autoPlay?: boolean;
+  /** 1 = normal speed. */
+  rate?: number;
+}
+
 /** Everything studied for one language: its own word lists, sessions and spreadsheet. */
 export interface Course {
   id: string;
@@ -15,6 +23,7 @@ export interface Course {
   tabCount?: number;
   /** Drive version of the spreadsheet after the last sync; unchanged = nothing to pull. */
   sheetVersion?: string;
+  speech?: SpeechSettings;
 }
 
 /** Contents of courses.json. */
