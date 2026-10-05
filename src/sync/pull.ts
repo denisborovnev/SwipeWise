@@ -18,7 +18,13 @@ export async function readSpreadsheet(
   );
   return {
     tabs: tabs.map((t, i) =>
-      parseTab({ sheetId: t.sheetId, title: t.title, columnCount: t.columnCount, rows: values[i] ?? [] }),
+      parseTab({
+        sheetId: t.sheetId,
+        title: t.title,
+        columnCount: t.columnCount,
+        rowCount: t.rowCount,
+        rows: values[i] ?? [],
+      }),
     ),
     otherTabCount: all.length - tabs.length,
   };

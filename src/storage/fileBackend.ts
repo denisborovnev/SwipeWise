@@ -24,6 +24,7 @@ export function createFileBackend(): StorageBackend {
       f.create({ overwrite: true });
       f.write(content);
     },
+    // Asynchronous in expo-file-system (moveSync would block the JS thread); safeBackend awaits it.
     move: (from, to) => file(from).move(file(to)),
     delete: (path) => file(path).delete(),
     deleteFolder(path) {

@@ -3,7 +3,7 @@ import type { VocabularyData, Word } from '@/model/types';
 import type { TabFix } from './mergePull';
 import type { ParsedTab } from './parseTab';
 import { columnLetter } from './pull';
-import { COLUMNS, type Column, tabRange, tabTitle, tabValues, wordRow } from './sheetFormat';
+import { COLUMNS, type Column, MIN_TAB_ROWS, tabRange, tabRowCount, tabTitle, tabValues, wordRow } from './sheetFormat';
 
 export interface SyncPlan {
   /** spreadsheets.batchUpdate requests (structure + appended rows), applied in order. */
@@ -135,6 +135,14 @@ export function planSync(
       })
       .map((w) => w.row)
       .sort((a, b) => b - a);
+    // Deleting the last word rows would leave only the frozen header, which Sheets refuses – add an empty
+    // row first (appended at the end, so the row numbers of the deletions stay the same).
+    const rowsAfter = (tab.rowCount ?? Infinity) + (fix?.insertHeader ? 1 : 0) - deleteRows.length;
+    if (deleteRows.length > 0 && rowsAfter < MIN_TAB_ROWS) {
+      requests.push({
+        appendDimension: { sheetId: tab.sheetId, dimension: 'ROWS', length: MIN_TAB_ROWS - rowsAfter },
+      });
+    }
     for (const row of deleteRows) {
       requests.push({
         deleteDimension: {
@@ -199,7 +207,7 @@ export function planSync(
         properties: {
           sheetId,
           title,
-          gridProperties: { rowCount: words.length + 1, columnCount: COLUMNS.length, frozenRowCount: 1 },
+          gridProperties: { rowCount: tabRowCount(words.length), columnCount: COLUMNS.length, frozenRowCount: 1 },
         },
       },
     });

@@ -1,7 +1,13 @@
 import { readJson } from '../repository';
 import { BAK, createSafeBackend, TMP, type FileOps } from '../safeBackend';
 
-/** In-memory files; `killAfter` makes the n-th file change throw, like Android killing the app there. */
+/** Lets other work run first, like the real (asynchronous) file system. */
+const later = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * In-memory files; `killAfter` makes the n-th file change throw, like Android killing the app there.
+ * Moves are asynchronous like expo-file-system's, so a missing `await` makes the next step see the old state.
+ */
 function memoryOps(initial: Record<string, string> = {}) {
   const files: Record<string, string> = { ...initial };
   let changes = 0;
@@ -18,8 +24,9 @@ function memoryOps(initial: Record<string, string> = {}) {
       change();
       files[path] = content;
     },
-    move(from, to) {
+    async move(from, to) {
       change();
+      await later();
       if (to in files) {
         throw new Error('destination exists');
       }

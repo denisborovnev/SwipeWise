@@ -1,7 +1,7 @@
 import type { Course, VocabularyData } from '@/model/types';
 
 import { APP_PROPERTY, type GoogleApi } from './googleApi';
-import { INFO_TAB, INFO_TEXT, spreadsheetTitle, tabRange, tabTitle, tabValues } from './sheetFormat';
+import { INFO_TAB, INFO_TEXT, spreadsheetTitle, tabRange, tabRowCount, tabTitle, tabValues } from './sheetFormat';
 
 export interface ConnectResult {
   spreadsheetId: string;
@@ -37,7 +37,7 @@ export async function connectCourse(api: GoogleApi, course: Course, data: Vocabu
 
   const created = await api.createSpreadsheet(spreadsheetTitle(course.name), [
     { title: INFO_TAB, rowCount: INFO_TEXT.length, columnCount: 1 },
-    ...tabs.map((t) => ({ title: t.title, rowCount: t.words.length + 1, frozenHeader: true })),
+    ...tabs.map((t) => ({ title: t.title, rowCount: tabRowCount(t.words.length), frozenHeader: true })),
   ]);
   const { spreadsheetId } = created;
 

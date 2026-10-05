@@ -62,7 +62,7 @@ describe('connectCourse', () => {
     expect(tabs.map((t) => [t.title, t.rowCount])).toEqual([
       [INFO_TAB, 4],
       ['Travel - 2026-10-01', 2],
-      ['Food - 2026-10-03', 1],
+      ['Food - 2026-10-03', 2], // empty list: header + 1 row (Sheets can't freeze every row)
     ]);
 
     const [, values] = calls[1].args as [string, { range: string; values: string[][] }[]];

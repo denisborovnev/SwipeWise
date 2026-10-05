@@ -1,15 +1,18 @@
 import type { StorageBackend } from './backend';
 
-/** The few file operations the safe backend needs (paths are relative to the data folder, "/"-separated). */
+/**
+ * The few file operations the safe backend needs (paths are relative to the data folder, "/"-separated).
+ * Any of them may be asynchronous (expo-file-system's `move` is), so every call is awaited.
+ */
 export interface FileOps {
   exists(path: string): boolean;
   read(path: string): Promise<string>;
   /** Creates missing folders. */
-  write(path: string, content: string): void;
-  /** Moves a file; the destination must not exist. */
-  move(from: string, to: string): void;
-  delete(path: string): void;
-  deleteFolder(path: string): void;
+  write(path: string, content: string): void | Promise<void>;
+  /** Moves a file; the destination must not exist. Resolves once the file is in its new place. */
+  move(from: string, to: string): void | Promise<void>;
+  delete(path: string): void | Promise<void>;
+  deleteFolder(path: string): void | Promise<void>;
   /** Names of the sub-folders of a folder (empty if it doesn't exist). */
   listFolders(path: string): string[];
 }
@@ -42,26 +45,27 @@ export function createSafeBackend(ops: FileOps): StorageBackend {
     },
 
     async writeTextAtomic(name, content) {
-      ops.write(name + TMP, content);
+      // Each step must be finished before the next starts, or the moves collide.
+      await ops.write(name + TMP, content);
       if (ops.exists(name)) {
         if (ops.exists(name + BAK)) {
-          ops.delete(name + BAK);
+          await ops.delete(name + BAK);
         }
-        ops.move(name, name + BAK);
+        await ops.move(name, name + BAK);
       }
-      ops.move(name + TMP, name);
+      await ops.move(name + TMP, name);
     },
 
     async delete(name) {
       for (const path of [name, name + TMP, name + BAK]) {
         if (ops.exists(path)) {
-          ops.delete(path);
+          await ops.delete(path);
         }
       }
     },
 
     async deleteFolder(name) {
-      ops.deleteFolder(name);
+      await ops.deleteFolder(name);
     },
 
     async listFolders(name) {

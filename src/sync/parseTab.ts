@@ -7,6 +7,8 @@ export interface SheetTab {
   sheetId: number;
   title: string;
   columnCount: number;
+  /** Rows of the tab's grid (incl. empty ones); unknown = undefined. */
+  rowCount?: number;
   /** Cell values (formatted), trailing empty cells / rows may be missing. */
   rows: string[][];
 }
@@ -36,6 +38,8 @@ export interface ParsedTab {
   /** Columns the header doesn't have yet (all of them when there is no header). */
   missingColumns: Column[];
   columnCount: number;
+  /** Rows of the tab's grid (incl. empty ones), if known. */
+  rowCount?: number;
   words: ParsedRow[];
   /** Rows with only Front or only Back – not used until completed. */
   incompleteRows: number;
@@ -137,6 +141,7 @@ export function parseTab(tab: SheetTab): ParsedTab {
     columns,
     missingColumns,
     columnCount: tab.columnCount,
+    rowCount: tab.rowCount,
     words,
     incompleteRows,
   };

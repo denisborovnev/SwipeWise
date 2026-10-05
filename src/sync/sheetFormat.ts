@@ -11,6 +11,15 @@ export type Column = (typeof COLUMNS)[number];
 
 /** Tab with a short explanation; tabs starting with "_" are not word lists. */
 export const INFO_TAB = '_SwipeWise';
+
+/**
+ * Rows of a new list tab: the header + one per word, but at least 2 – the header row is frozen, and Sheets
+ * doesn't allow freezing every row of a tab (an empty list would be just the header).
+ */
+export const tabRowCount = (wordCount: number) => Math.max(wordCount + 1, 2);
+
+/** Rows a list tab must keep: the frozen header + at least one more (see tabRowCount). */
+export const MIN_TAB_ROWS = 2;
 export const INFO_TEXT = [
   ['This spreadsheet is managed by the SwipeWise app.'],
   ['Every other tab is a word list, named "<list name> - YYYY-MM-DD" (the date the list was created).'],

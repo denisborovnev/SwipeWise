@@ -90,6 +90,36 @@ describe('planSync', () => {
     expect(plan.pushed).toMatchObject({ deletedWordIds: ['W1', 'W3'], words: [{ id: 'W4' }] });
   });
 
+  it('keeps a row below the frozen header when the last words of a tab are deleted', () => {
+    const sheet = [word('W1'), word('W2')];
+    const local: VocabularyData = { version: 1, lists: lists(), words: [], deleted: { wordIds: ['W1', 'W2'], sheetIds: [] } };
+    const parsed = { ...tab(tabValues(sheet)), rowCount: 3 }; // header + 2 words, nothing more
+    const { plan } = sync(local, [parsed]);
+    expect(plan.requests).toEqual([
+      { appendDimension: { sheetId: 11, dimension: 'ROWS', length: 1 } },
+      { deleteDimension: { range: { sheetId: 11, dimension: 'ROWS', startIndex: 2, endIndex: 3 } } },
+      { deleteDimension: { range: { sheetId: 11, dimension: 'ROWS', startIndex: 1, endIndex: 2 } } },
+    ]);
+    // With spare rows nothing is added.
+    expect(sync(local, [{ ...parsed, rowCount: 1000 }]).plan.requests[0]).toHaveProperty('deleteDimension');
+  });
+
+  it('creates the tab of an empty list with a row below the frozen header', () => {
+    const local: VocabularyData = { version: 1, lists: [{ id: 'L9', name: 'Empty', createdAt: day(5, 0) }], words: [] };
+    const { plan } = sync(local, []);
+    expect(plan.requests).toEqual([
+      {
+        addSheet: {
+          properties: {
+            sheetId: 501,
+            title: 'Empty - 2026-10-05',
+            gridProperties: { rowCount: 2, columnCount: 7, frozenRowCount: 1 },
+          },
+        },
+      },
+    ]);
+  });
+
   it('creates tabs for new lists, deletes tabs of deleted lists and renames renamed ones', () => {
     const local: VocabularyData = {
       version: 1,
