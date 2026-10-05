@@ -54,12 +54,13 @@ words you keep forgetting.
 - **Works offline** – everything is stored on your phone; no account is needed.
 - **Google Sheets** – connect a course to a spreadsheet in your Google Drive. Add or fix
   words on your computer and the app picks them up; your progress is saved back to the sheet. The app can
-  only see the spreadsheets it created, nothing else in your Drive.
+  only see the spreadsheets it created, nothing else in your Drive. After reinstalling (or on a new phone),
+  **Restore from Google Drive** brings your courses back.
 
 ## Status
 
-The app works fully offline and syncs each course with its own Google Spreadsheet. Next: restoring courses
-from Google Drive after a reinstall; ideas: irregular verb forms for English, human recordings for pronunciation.
+The app works fully offline, syncs each course with its own Google Spreadsheet and restores courses from Google
+Drive after a reinstall. Ideas: irregular verb forms for English, human recordings for pronunciation.
 
 ## More
 

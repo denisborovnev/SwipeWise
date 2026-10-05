@@ -16,6 +16,7 @@ import { mergePull } from '@/sync/mergePull';
 import { canSkipSync } from '@/sync/changes';
 import { markPushed, planSync } from '@/sync/planSync';
 import { readSpreadsheet } from '@/sync/pull';
+import { restorableCourses, type RestorableCourse } from '@/sync/restore';
 import { spreadsheetTitle } from '@/sync/sheetFormat';
 
 import { createCourseStore, type CourseState } from './courseStore';
@@ -181,6 +182,27 @@ export async function connectGoogleSheets(courseId: string): Promise<{ created: 
     await syncActiveCourse();
   }
   return { created: result.created };
+}
+
+/**
+ * Courses that can be restored from Google Drive: spreadsheets created by SwipeWise (on this or another
+ * phone, e.g. before reinstalling) that no course here uses. Needs a signed-in account.
+ */
+export async function findRestorableCourses(): Promise<RestorableCourse[]> {
+  const spreadsheets = await googleApi.listAppSpreadsheets();
+  return restorableCourses(spreadsheets, courseStore.getState().courses, new Date().toISOString());
+}
+
+/**
+ * Adds the courses (connected to their spreadsheets) and opens the first one, which reads its words from
+ * the spreadsheet. The others are read when the user switches to them.
+ */
+export async function restoreCourses(items: RestorableCourse[]) {
+  if (items.length === 0) {
+    return;
+  }
+  await courseStore.getState().addRestoredCourses(items.map((i) => i.course));
+  await switchCourse(items[0].course.id);
 }
 
 /**

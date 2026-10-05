@@ -12,6 +12,8 @@ export interface AppSpreadsheet {
   name: string;
   courseId?: string;
   language?: string;
+  /** When the spreadsheet was created (ISO). */
+  createdTime?: string;
 }
 
 export interface NewTab {
@@ -65,8 +67,10 @@ export function createGoogleApi(request: GoogleRequest): GoogleApi {
         `mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and ` +
           `appProperties has { key='${APP_PROPERTY}' and value='1' }`,
       );
-      const fields = encodeURIComponent('files(id,name,appProperties)');
-      const res = await request<{ files: { id: string; name: string; appProperties?: Record<string, string> }[] }>(
+      const fields = encodeURIComponent('files(id,name,createdTime,appProperties)');
+      const res = await request<{
+        files: { id: string; name: string; createdTime?: string; appProperties?: Record<string, string> }[];
+      }>(
         `${DRIVE}?q=${q}&fields=${fields}&pageSize=100`,
       );
       return res.files.map((f) => ({
@@ -74,6 +78,7 @@ export function createGoogleApi(request: GoogleRequest): GoogleApi {
         name: f.name,
         courseId: f.appProperties?.courseId,
         language: f.appProperties?.language,
+        createdTime: f.createdTime,
       }));
     },
 

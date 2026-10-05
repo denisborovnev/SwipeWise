@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 
 import { Button, IconButton } from '@/components/Button';
 import { Footer } from '@/components/Footer';
+import { RestoreSection } from '@/components/RestoreSection';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import { languageName } from '@/model/languages';
 import { googleAccountStore, switchCourse, useCourses, useGoogleAccount, useSync } from '@/store';
@@ -29,6 +30,7 @@ export default function CoursesScreen() {
         contentContainerStyle={styles.content}
         data={sorted}
         keyExtractor={(c) => c.id}
+        ListFooterComponent={<RestoreSection />}
         renderItem={({ item }) => {
           const active = item.id === activeCourseId;
           return (

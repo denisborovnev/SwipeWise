@@ -12,7 +12,16 @@ import { Spacing, useThemeColors } from '@/constants/theme';
 import { sortLists, withWordCounts } from '@/model/lists';
 import { isFinished } from '@/model/session';
 import type { Course } from '@/model/types';
-import { loadAll, syncActiveCourse, useCourses, useGoogleAccount, useSession, useSync, useVocabulary } from '@/store';
+import {
+  googleAccountStore,
+  loadAll,
+  syncActiveCourse,
+  useCourses,
+  useGoogleAccount,
+  useSession,
+  useSync,
+  useVocabulary,
+} from '@/store';
 import { plural } from '@/utils/format';
 
 /** How many of the newest lists the home screen shows; the rest are under "All lists". */
@@ -195,6 +204,13 @@ function LanguageMissing({ course }: { course: Course }) {
 }
 
 /** First start: no courses yet. */
+/** Fresh install: sign in, then the courses screen lists the courses found in Google Drive. */
+async function restoreFromDrive() {
+  if (googleAccountStore.getState().email || (await googleAccountStore.getState().signIn())) {
+    router.push('/courses');
+  }
+}
+
 function Welcome() {
   const colors = useThemeColors();
   return (
@@ -206,6 +222,12 @@ function Welcome() {
         Learn words with flashcards: flip a card, then swipe right if you knew it, left if you didn’t.
       </Text>
       <Button title="Choose the language you’re learning" icon="language" onPress={() => router.push('/course')} />
+      <Button
+        title="Restore from Google Drive"
+        icon="cloud-download-outline"
+        variant="secondary"
+        onPress={restoreFromDrive}
+      />
     </View>
   );
 }

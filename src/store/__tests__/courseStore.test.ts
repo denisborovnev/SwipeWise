@@ -78,4 +78,15 @@ describe('courseStore', () => {
     await store.getState().load();
     expect(store.getState().activeCourseId).toBe('A');
   });
+
+  it('adds restored courses without switching and skips ids that exist', async () => {
+    const { store, saved } = setup();
+    await store.getState().load();
+    const en = await store.getState().addCourse({ name: 'English', language: 'en-GB' });
+    const restored = { id: 'R1', name: 'Spanish', language: 'es-ES', createdAt: NOW, spreadsheetId: 'S1' };
+    await store.getState().addRestoredCourses([restored, { ...restored, id: en, name: 'Duplicate' }]);
+    expect(store.getState().courses.map((c) => c.name)).toEqual(['English', 'Spanish']);
+    expect(store.getState().activeCourseId).toBeNull();
+    expect(saved().courses[1]).toEqual(restored);
+  });
 });

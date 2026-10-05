@@ -105,8 +105,10 @@ Every word stores:
   - Each **tab** in the spreadsheet = one **word list**.
   - The spreadsheet can be **connected at any time later** – all local lists are then uploaded to it,
     one tab per list.
-  - After reinstalling the app (or on a new phone), signing in with the same Google account finds the
-    spreadsheets created earlier and restores your courses from them.
+  - **Restoring courses:** after reinstalling the app (or on a new phone), **Restore from Google Drive** on the
+    welcome screen (or the courses screen) signs in and lists the app's spreadsheets that no course on the phone
+    uses. Restoring creates the course (name from the spreadsheet title, language from its tags) connected to its
+    spreadsheet and reads its words. Sessions aren't in the spreadsheet, so they start fresh.
 - **Sync rules**
   - Only the current course is synced; another course syncs when you switch to it.
   - **From the sheet:** on app start, when switching course, when returning to the app after a few minutes,
@@ -250,6 +252,8 @@ Before a release, on a phone or emulator:
 - [ ] **Session:** kill the app mid-session → it continues at the same card; Restart reshuffles; finishing pushes
       the results.
 - [ ] **Courses:** two courses with different spreadsheets; switching syncs the other one; words never mix.
+- [ ] **Restore:** fresh install → Restore from Google Drive → sign in → the courses appear → Restore all → words of
+  the first course are read; switching reads the others. A course already on the phone is not offered.
 - [ ] **Errors:** sync while offline → error shown, retried later; sign out → red cloud; sign in again → syncs.
 - [ ] **Dark mode** and a small screen: all screens readable, nothing cut off.
 - [ ] **Release APK:** installs over the previous version; Google sign-in works (release SHA-1 registered).

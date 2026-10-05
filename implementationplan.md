@@ -290,10 +290,18 @@ Only the **current course** is synced (another course is synced when the user sw
 - [x] No voice for the language → the course screen explains it and opens Android's text-to-speech settings.
 - Later: human recordings and IPA for English words (Free Dictionary API), with the phone's voice as fallback.
 
-### Milestone 8 – Restore courses after a reinstall
-Only once the app has proven itself in daily use.
-- [ ] **Restore after reinstall**: after signing in on a fresh install, app-created spreadsheets that don't belong to a local course are offered as courses to restore (name, language and `courseId` come from the spreadsheet's title and `appProperties`); restoring creates the course and pulls it.
-- [ ] Courses screen: "Restore N courses from Google Drive" when Drive has app-created spreadsheets (Drive `files.list` with the `swipewise` app property) that no local course uses; also offered on the welcome screen of a fresh install.
+### Milestone 8 – Restore courses after a reinstall ✅
+- [x] **Restore from Google Drive**: app-created spreadsheets (Drive `files.list` with the `swipewise` app property) that no course on the phone uses – neither by `spreadsheetId` nor by `courseId` (a disconnected course gets its spreadsheet back with Connect) – are offered as courses to restore. Name from the spreadsheet title ("SwipeWise – English" → "English", made unique), language and `courseId` from `appProperties`, date from Drive's `createdTime` (`src/sync/restore.ts`).
+- [x] Courses screen: "In your Google Drive" section with **Restore** per course and **Restore all**; signed out: a "Restore courses from Google Drive" link. Welcome screen of a fresh install: **Restore from Google Drive** (signs in, then opens the courses screen).
+- [x] Restoring adds the courses connected to their spreadsheets and opens the first one, which pulls its words; the others are pulled when the user switches to them. The course keeps its old id, so files left on the phone for it (see the bug below) are used again.
+- Sessions and the "last used filter" aren't in the spreadsheet, so they start fresh.
+
+### Bugs
+- [ ] **All courses lost after opening / closing the app many times** (reported 2026-10-05): the app suddenly showed the welcome screen. Probable cause: `fileBackend.writeTextAtomic` writes a temp file and then `move(target, { overwrite: true })`, which removes `courses.json` before moving the new file in – if Android kills the app between the two (swiping it away while the background sync saves `lastSyncAt`), `courses.json` is missing. `courseStore.load()` then treats it as a first launch and **saves an empty course list over it**. The same happens if the file is corrupt (`readJson` returns null). The course folders (`courses/<id>/words.json`) survive, so the words are still on the phone. Fix ideas:
+  - read the `.tmp` file (or a `.bak` copy kept on every write) when the target is missing or doesn't parse;
+  - never write an empty `courses.json` over a missing / corrupt one when `courses/` has folders – rebuild the list from them instead (name from the connected spreadsheet or "My course");
+  - fewer writes of `courses.json` (e.g. don't save `lastSyncAt` on every skipped sync);
+  - test: kill the app in a loop while it syncs.
 
 ---
 

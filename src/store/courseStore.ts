@@ -21,6 +21,8 @@ export interface CourseState {
   load(): Promise<void>;
   /** Creates a course (doesn't switch to it) and returns its id. */
   addCourse(input: CourseInput): Promise<string>;
+  /** Adds complete courses, e.g. restored from Google Drive (doesn't switch; skips ids that exist). */
+  addRestoredCourses(courses: Course[]): Promise<void>;
   updateCourse(courseId: string, patch: CoursePatch): Promise<void>;
   /** Removes the course and its files; another course becomes the current one if needed. */
   deleteCourse(courseId: string): Promise<void>;
@@ -87,6 +89,14 @@ export function createCourseStore({
         const course: Course = { id, name: input.name.trim(), language: input.language, createdAt: now() };
         await change({ courses: [...get().courses, course], activeCourseId: get().activeCourseId });
         return id;
+      },
+
+      async addRestoredCourses(restored) {
+        const ids = new Set(get().courses.map((c) => c.id));
+        const added = restored.filter((c) => !ids.has(c.id));
+        if (added.length > 0) {
+          await change({ courses: [...get().courses, ...added], activeCourseId: get().activeCourseId });
+        }
       },
 
       updateCourse: (courseId, patch) =>
