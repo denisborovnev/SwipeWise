@@ -307,12 +307,6 @@ Only the **current course** is synced (another course is synced when the user sw
 - [x] **Feedback on the 🔊 button**: `speak()` tracks a phase per button key in `speechStore` (`starting` from the tap until expo-speech's `onStart`, then `speaking` until `onDone` / `onStopped` / `onError`; gives up after 15 s if the engine never reports). `SpeakIcon` shows a spinner over a faded icon while starting and a filled icon while speaking – on the card and in word lists.
 - [x] **Edit the card during a session**: ✏️ in the card's top-right corner (own tap gesture, like 🔊) opens `word.tsx` for the word; the card shows the new text and stays flipped / in place.
 
-### Milestone 10 – Copy text from cards
-Separate from Milestone 9 because it may interfere with swiping cards.
-- [ ] Let the user copy the word / example from a card (what they do with it – search, translate… – is up to them; no "Search the web" button).
-- [ ] First try **native text selection** (`selectable` text: long-press selects, Android's menu offers Copy). The card's gestures (tap = flip, swipe left / right = answer / browse) must keep working: check that a long-press selects text, and that a swipe that starts on the text still moves the card.
-- [ ] If native selection makes swiping worse, drop it and come up with another way (e.g. a copy button on the card, or a long-press menu with **Copy**).
-
 ### Bugs
 - [x] **All courses lost after opening / closing the app many times** (reported and fixed 2026-10-05, 1.2.0): the app suddenly showed the welcome screen. Cause: saving wrote a temp file and then `move(target, { overwrite: true })`, which in expo-file-system **deletes the target first** – if Android killed the app in between (the background sync saves `courses.json`), the file was gone. `courseStore.load()` then took it for a first launch and saved an empty course list over it (also for a corrupt file). The words in `courses/<id>/` survived. Fixed by:
   - `safeBackend.ts`: write `name.tmp` → move `name` to `name.bak` → move `name.tmp` to `name`; reads fall back to `.tmp`, then `.bak`; a corrupt file falls back to its `.bak`; `delete` removes all three;
