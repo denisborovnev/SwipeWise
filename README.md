@@ -30,7 +30,7 @@ Your words can live in a Google Spreadsheet that you can also edit on your compu
 3. The back shows the word and, if you added them, **example sentences**.
 4. **Swipe right** if you knew it, **swipe left** if you didn't (or use the buttons).
 
-Want another look at the previous word? Swipe the card's front side left to go back (right skips to the next
+Want another look at the previous word? Swipe the card's front side right to go back (left skips to the next
 one). A typo on a card? Tap ✏️ and fix it without leaving the session.
 
 SwipeWise remembers when you last practised each word and whether you knew it, so you can focus on the

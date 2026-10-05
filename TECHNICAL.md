@@ -28,8 +28,8 @@ Each word is a two-sided card:
    - **Swipe left** – "I didn't remember it"
 5. The word's *last revised* time and *remembered* flag are updated, and the next card appears.
 
-While the **front** is shown, swiping moves between cards without answering: **swipe left** = previous card,
-**swipe right** = next card (nothing is recorded for the card you leave; on the first / last card it bounces
+While the **front** is shown, swiping moves between cards without answering, like turning pages: **swipe left**
+= next card, **swipe right** = previous card (nothing is recorded for the card you leave; on the first / last card it bounces
 back). A skipped card stays unanswered and counts as *skipped* in the results. Going back to a card answered
 earlier shows its answer on the front; flipping and answering it again replaces that answer. ✏️ in the
 card's corner opens the word editor; the card shows the change and stays where it is in the session.

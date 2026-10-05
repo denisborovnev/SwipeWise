@@ -68,9 +68,9 @@ export default function PlayScreen() {
   };
 
   const browse = (direction: BrowseDirection) => {
-    // Swiped right (next): the card left to the right, so the next one comes from the left – and vice versa.
+    // Swiped left (next): the card left to the left, so the next one comes from the right – and vice versa.
     setFlipped(null);
-    setEnterFrom(direction === 1 ? -1 : 1);
+    setEnterFrom(direction);
     sessionStore.getState().browse(direction);
   };
 
@@ -153,7 +153,7 @@ export default function PlayScreen() {
           </View>
         ) : (
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            Recall the word, then tap the card.{'\n'}Swipe ‹ › to go to the previous / next word.
+            Recall the word, then tap the card.{'\n'}Swipe left for the next word, right for the previous one.
           </Text>
         )}
       </View>

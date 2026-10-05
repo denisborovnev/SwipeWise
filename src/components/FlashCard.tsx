@@ -41,7 +41,7 @@ interface FlashCardProps {
   speechPhase?: SpeechState['phase'];
   /** Shows a ✏️ button in the top-right corner. */
   onEdit?: () => void;
-  /** Swiping the front side: left = previous card, right = next card, without answering. */
+  /** Swiping the front side: left = next card, right = previous card (like turning pages), without answering. */
   onBrowse?: (direction: BrowseDirection) => void;
   /** Whether there is a previous / next card (otherwise the card bounces back). */
   canBrowse?: { previous: boolean; next: boolean };
@@ -54,7 +54,7 @@ interface FlashCardProps {
 
 /**
  * Tap to flip between front and back. On the back, swipe right = "I remembered it", swipe left = "I didn't".
- * On the front, swipe left / right goes to the previous / next card without answering.
+ * On the front, swipe left / right goes to the next / previous card without answering (like turning pages).
  * Render with a `key` per card so every card starts on the front.
  */
 export function FlashCard({
@@ -111,9 +111,9 @@ export function FlashCard({
   /** Slides the card out to the side it was swiped to, then shows the previous / next card. */
   const slideOff = (direction: BrowseDirection) => {
     'worklet';
-    // Swipe right = next card, so the card leaves to the right.
+    // Swipe left = next card, so the card leaves to the left (and to the right for the previous one).
     translateX.set(
-      withTiming(direction * width * 1.2, { duration: 180 }, (done) => {
+      withTiming(-direction * width * 1.2, { duration: 180 }, (done) => {
         if (done) {
           scheduleOnRN(browse, direction);
         }
@@ -147,10 +147,10 @@ export function FlashCard({
       if (backSide && (goesRight || goesLeft)) {
         scheduleOnRN(markLeaving);
         flyOff(goesRight ? 'yes' : 'no');
-      } else if (!backSide && goesRight && hasNext) {
+      } else if (!backSide && goesLeft && hasNext) {
         scheduleOnRN(markLeaving);
         slideOff(1);
-      } else if (!backSide && goesLeft && hasPrevious) {
+      } else if (!backSide && goesRight && hasPrevious) {
         scheduleOnRN(markLeaving);
         slideOff(-1);
       } else {
@@ -208,11 +208,12 @@ export function FlashCard({
     opacity: rotation.get() >= 90 ? 1 : 0,
   }));
 
+  // Dragging left reveals "Next ›" on the right, dragging right "‹ Previous" on the left.
   const nextHint = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.get(), [0, SWIPE_THRESHOLD], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(translateX.get(), [-SWIPE_THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
   }));
   const previousHint = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.get(), [-SWIPE_THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(translateX.get(), [0, SWIPE_THRESHOLD], [0, 1], Extrapolation.CLAMP),
   }));
 
   const rememberedOverlay = useAnimatedStyle(() => ({
