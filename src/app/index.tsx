@@ -71,7 +71,7 @@ export default function HomeScreen() {
         // Pull down to read changes made in the spreadsheet (connected courses only).
         refreshControl={
           course.spreadsheetId && signedIn ? (
-            <RefreshControl refreshing={syncing} onRefresh={() => syncActiveCourse()} colors={[colors.primary]} />
+            <RefreshControl refreshing={syncing} onRefresh={() => syncActiveCourse({ force: true })} colors={[colors.primary]} />
           ) : undefined
         }
         contentContainerStyle={styles.content}

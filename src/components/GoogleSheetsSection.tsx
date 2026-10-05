@@ -86,7 +86,7 @@ export function GoogleSheetsSection({ course }: { course: Course }) {
             <Button
               title="Sync now"
               icon="sync"
-              onPress={() => syncActiveCourse()}
+              onPress={() => syncActiveCourse({ force: true })}
               disabled={sync?.status === 'syncing'}
             />
           )}

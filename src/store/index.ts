@@ -13,6 +13,7 @@ import { appProperties, connectCourse } from '@/sync/connect';
 import { createGoogleApi } from '@/sync/googleApi';
 import { createGoogleClient } from '@/sync/googleClient';
 import { mergePull } from '@/sync/mergePull';
+import { canSkipSync } from '@/sync/changes';
 import { markPushed, planSync } from '@/sync/planSync';
 import { readSpreadsheet } from '@/sync/pull';
 import { spreadsheetTitle } from '@/sync/sheetFormat';
@@ -173,6 +174,7 @@ export async function connectGoogleSheets(courseId: string): Promise<{ created: 
   await courseStore.getState().updateCourse(courseId, {
     spreadsheetId: result.spreadsheetId,
     lastSyncAt: result.created ? new Date().toISOString() : undefined,
+    sheetVersion: undefined,
   });
   if (!result.created) {
     // Reconnected to an earlier spreadsheet: bring its words in.
@@ -187,7 +189,7 @@ export async function connectGoogleSheets(courseId: string): Promise<{ created: 
  * header, date in the tab name). Does nothing if the course isn't connected or nobody is signed in.
  * Errors are kept in `syncStore` (e.g. offline) – the words on the phone stay as they are.
  */
-export async function syncActiveCourse(): Promise<void> {
+export async function syncActiveCourse({ force = false }: { force?: boolean } = {}): Promise<void> {
   const courseId = courseStore.getState().activeCourseId;
   const course = courseStore.getState().courses.find((c) => c.id === courseId);
   const sync = syncStore.getState();
@@ -200,6 +202,19 @@ export async function syncActiveCourse(): Promise<void> {
   }
   syncStore.setState({ courseId: course.id, status: 'syncing', error: undefined });
   try {
+    // Cheap check first: if the spreadsheet is unchanged since the last sync and the phone has nothing
+    // to send, there is nothing to do. (Sync now / pull-to-refresh force a full sync.)
+    if (!force && course.sheetVersion && vocabularyStore.getState().status === 'ready') {
+      const version = await googleApi.getFileVersion(course.spreadsheetId);
+      if (canSkipSync(vocabularyStore.getState().data, course.sheetVersion, version)) {
+        console.info('Sync skipped: the spreadsheet has not changed');
+        await courseStore.getState().updateCourse(course.id, { lastSyncAt: new Date().toISOString() });
+        syncStore.setState({ status: 'idle' });
+        retry.reset();
+        return finishSync();
+      }
+    }
+
     const { tabs, otherTabCount } = await readSpreadsheet(googleApi, course.spreadsheetId);
     // Merge into the data as it is now (the user may have changed something while we were reading).
     if (courseStore.getState().activeCourseId !== course.id || vocabularyStore.getState().status !== 'ready') {
@@ -218,9 +233,14 @@ export async function syncActiveCourse(): Promise<void> {
     if (courseStore.getState().activeCourseId === course.id) {
       applySync(markPushed(vocabularyStore.getState().data, plan.pushed));
     }
+    // The version after our own writes, so the next sync can tell whether someone else changed it.
+    // (An edit in the sheet during the few ms between the write and this read is picked up by the next
+    // forced sync or the next change.)
+    const sheetVersion = await googleApi.getFileVersion(course.spreadsheetId);
     await courseStore.getState().updateCourse(course.id, {
       lastSyncAt: new Date().toISOString(),
       tabCount: otherTabCount + result.data.lists.length,
+      sheetVersion,
     });
     syncStore.setState({ status: 'idle' });
     retry.reset();
@@ -229,6 +249,11 @@ export async function syncActiveCourse(): Promise<void> {
     syncStore.setState({ status: 'error', error: e instanceof Error ? e.message : String(e) });
     retry.schedule();
   }
+  return finishSync();
+}
+
+/** Runs the sync that was requested while one was running. */
+async function finishSync() {
   if (syncAgain) {
     syncAgain = false;
     await syncActiveCourse();
@@ -326,7 +351,7 @@ function newSheetId(used: Set<number>): number {
 
 /** Stops syncing a course; its words stay on the phone and the spreadsheet stays in Drive. */
 export async function disconnectGoogleSheets(courseId: string) {
-  await courseStore.getState().updateCourse(courseId, { spreadsheetId: undefined });
+  await courseStore.getState().updateCourse(courseId, { spreadsheetId: undefined, sheetVersion: undefined });
 }
 
 /** Keeps a connected course's spreadsheet name and tags in line with the course (best effort). */

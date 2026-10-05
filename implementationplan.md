@@ -248,6 +248,8 @@ Implemented as **one sync = read the whole spreadsheet once, merge, write once**
 
 Local bookkeeping: `contentDirty` on words (text / list changed), `dirty` on renamed lists, lists without `sheetId` are new, `deleted` holds deleted word ids and tab ids.
 
+Skipping unchanged spreadsheets: after every sync the Drive file `version` is stored on the course (`sheetVersion`); the next sync first reads only that version (one tiny request) and stops if it is unchanged and nothing on the phone waits to be sent (`sync/changes.ts`). **Sync now** and pull-to-refresh always do a full sync.
+
 Triggers: app start, course switch, connect, **Sync now**, word / list edits (debounced 2 s), session finished, app to background, app back after > 5 min. Pull-to-refresh on the home screen. A sync requested while one runs is run once more afterwards. A failed sync (offline, Google error) is retried after 30 s, 1, 2, 4, 8 and then every 15 minutes, and on every trigger above; nothing is lost meanwhile because the changes stay marked locally. (A network listener – `expo-network` / NetInfo – could retry as soon as the connection is back; not added, as it needs a native rebuild and the backoff covers it.)
 
 Only the **current course** is synced (another course is synced when the user switches to it).

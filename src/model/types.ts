@@ -13,6 +13,8 @@ export interface Course {
   lastSyncAt?: string;
   /** Number of tabs in the spreadsheet after the last sync (for the tab limit note). */
   tabCount?: number;
+  /** Drive version of the spreadsheet after the last sync; unchanged = nothing to pull. */
+  sheetVersion?: string;
 }
 
 /** Contents of courses.json. */

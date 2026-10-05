@@ -9,7 +9,7 @@ import type { LoadStatus } from './vocabularyStore';
 export const MIGRATED_COURSE_NAME = 'My course';
 
 export type CourseInput = Pick<Course, 'name' | 'language'>;
-export type CoursePatch = Partial<Pick<Course, 'name' | 'language' | 'spreadsheetId' | 'lastSyncAt' | 'tabCount'>>;
+export type CoursePatch = Partial<Pick<Course, 'name' | 'language' | 'spreadsheetId' | 'lastSyncAt' | 'tabCount' | 'sheetVersion'>>;
 
 export interface CourseState {
   status: LoadStatus;

@@ -107,6 +107,8 @@ Every word stores:
     Fix-ups for rows and tabs you added by hand (ids, dates, header row) are written right after reading.
   - **To the sheet:** word and list changes **right away**; review results (swipes) when a session finishes,
     when the app goes to background, and on the next start.
+  - If the spreadsheet hasn't changed since the last sync and the phone has nothing to send, the app only
+    checks the spreadsheet's version and skips reading it. Pull-to-refresh and **Sync now** always read everything.
   - If the device is offline, changes stay on the phone marked as not synced and are pushed later.
   - The sync status is shown as a cloud icon on the home screen and in the course list.
 

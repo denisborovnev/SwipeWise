@@ -44,6 +44,7 @@ function fakeApi(existing: { id: string; name: string; courseId?: string }[] = [
       calls.push({ method: 'setAppProperties', args });
     },
     renameFile: async () => {},
+    getFileVersion: async () => '1',
     getTabs: async () => [],
     readValues: async () => [],
     batchUpdate: async () => {},

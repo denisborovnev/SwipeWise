@@ -36,6 +36,8 @@ export interface GoogleApi {
   writeValues(spreadsheetId: string, data: { range: string; values: string[][] }[]): Promise<void>;
   setAppProperties(fileId: string, properties: Record<string, string>): Promise<void>;
   renameFile(fileId: string, name: string): Promise<void>;
+  /** Drive's version number of a file; it grows with every change (a cheap "has it changed?" check). */
+  getFileVersion(fileId: string): Promise<string>;
   /** Tabs of a spreadsheet (id, title, size). */
   getTabs(spreadsheetId: string): Promise<TabInfo[]>;
   /** Formatted values of several ranges, in the same order (rows / cells may be missing at the end). */
@@ -114,6 +116,11 @@ export function createGoogleApi(request: GoogleRequest): GoogleApi {
 
     async renameFile(fileId, name) {
       await request(`${DRIVE}/${fileId}?fields=id`, { method: 'PATCH', body: { name } });
+    },
+
+    async getFileVersion(fileId) {
+      const res = await request<{ version: string }>(`${DRIVE}/${fileId}?fields=version`);
+      return String(res.version);
     },
 
     async getTabs(spreadsheetId) {
