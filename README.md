@@ -8,6 +8,16 @@ Your words can live in a Google Spreadsheet that you can also edit on your compu
 
 ---
 
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.png" width="170" alt="Home screen with the current session and the newest word lists"><br>Home</td>
+    <td align="center"><img src="docs/screenshots/front.png" width="170" alt="Front of a card with the word in your native language"><br>Recall the word…</td>
+    <td align="center"><img src="docs/screenshots/swipe.png" width="170" alt="Back of the card being swiped right: Knew it"><br>…flip and swipe</td>
+    <td align="center"><img src="docs/screenshots/new-session.png" width="170" alt="New session filters: word lists, added, last revised"><br>Choose what to practise</td>
+    <td align="center"><img src="docs/screenshots/list.png" width="170" alt="A word list with its words"><br>Your word lists</td>
+  </tr>
+</table>
+
 ## How it works
 
 | Front                 | Back                               |

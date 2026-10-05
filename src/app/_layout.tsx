@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -61,6 +62,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        {/* Dark icons on light screens and vice versa. */}
+        <StatusBar style="auto" />
         <Stack>
           <Stack.Screen name="index" options={{ title: 'SwipeWise' }} />
           <Stack.Screen name="courses" options={{ title: 'Courses' }} />
