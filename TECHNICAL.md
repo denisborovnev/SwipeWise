@@ -205,6 +205,12 @@ npm run lint         # ESLint
   The APK is `android/app/build/outputs/apk/release/app-release.apk`. Raise `version` / `android.versionCode`
   in `app.json` for every new release, so the phone accepts it as an update.
 
+**GitHub release** (download the APK on a phone): copy the APK to `dist/SwipeWise-<version>.apk` (git-ignored) and
+```bash
+gh release create v<version> dist/SwipeWise-<version>.apk --title "SwipeWise <version>" --notes "…"
+```
+The repo is public, so the APK is public too (it contains no secrets – the OAuth Web client id is public by design).
+
 **Google Play:** see [PUBLISHING.md](PUBLISHING.md).
 
 **App icon:** `assets/icon-source.html` draws the icon, the adaptive icon layers, the splash image and the
