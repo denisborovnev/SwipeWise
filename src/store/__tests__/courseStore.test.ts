@@ -1,8 +1,8 @@
 import { createMemoryBackend } from '@/storage/backend';
-import { COURSES_FILE, courseFolder, createCoursesRepository } from '@/storage/courses';
+import { COURSE_INFO_FILE, COURSES_FILE, courseFolder, createCoursesRepository } from '@/storage/courses';
 import { FILES } from '@/storage/repository';
 
-import { createCourseStore, MIGRATED_COURSE_NAME } from '../courseStore';
+import { createCourseStore, MIGRATED_COURSE_NAME, RECOVERED_COURSE_NAME } from '../courseStore';
 
 const NOW = '2026-10-04T10:00:00.000Z';
 
@@ -88,5 +88,46 @@ describe('courseStore', () => {
     expect(store.getState().courses.map((c) => c.name)).toEqual(['English', 'Spanish']);
     expect(store.getState().activeCourseId).toBeNull();
     expect(saved().courses[1]).toEqual(restored);
+  });
+
+  it('rebuilds the courses from their folders when courses.json is lost, instead of starting empty', async () => {
+    const words = JSON.stringify({ version: 1, lists: [], words: [] });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { store, saved } = setup({
+      [`${courseFolder('A')}/${FILES.vocabulary}`]: words,
+      [`${courseFolder('B')}/${FILES.sessions}`]: '{}',
+    });
+    await store.getState().load();
+    warn.mockRestore();
+    expect(store.getState().courses).toEqual([
+      { id: 'A', name: RECOVERED_COURSE_NAME, language: null, createdAt: NOW, recovered: true },
+      { id: 'B', name: `${RECOVERED_COURSE_NAME} (2)`, language: null, createdAt: NOW, recovered: true },
+    ]);
+    expect(store.getState().activeCourseId).toBe('A');
+    expect(saved().courses).toHaveLength(2);
+  });
+
+  it('keeps course.json in each course folder and rebuilds the courses from it', async () => {
+    const { store, backend, repository } = setup();
+    await store.getState().load();
+    const en = await store.getState().addCourse({ name: 'English', language: 'en-GB' });
+    await store.getState().updateCourse(en, { spreadsheetId: 'S1', lastSyncAt: NOW });
+    const info = () => JSON.parse(backend.files[`${courseFolder(en)}/${COURSE_INFO_FILE}`]);
+    expect(info()).toEqual({ id: en, name: 'English', language: 'en-GB', createdAt: NOW, spreadsheetId: 'S1' });
+
+    delete backend.files[COURSES_FILE];
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const reloaded = createCourseStore({ repository, newId: () => 'x', now: () => NOW });
+    await reloaded.getState().load();
+    warn.mockRestore();
+    expect(reloaded.getState().courses).toEqual([info()]); // complete again – not marked as recovered
+  });
+
+  it('writes the missing course.json of existing courses on load', async () => {
+    const courses = { version: 1, courses: [{ id: 'A', name: 'Polish', language: 'pl-PL', createdAt: NOW }], activeCourseId: 'A' };
+    const { store, backend } = setup({ [COURSES_FILE]: JSON.stringify(courses) });
+    await store.getState().load();
+    await store.getState().setActive('A'); // waits for the pending writes
+    expect(JSON.parse(backend.files[`${courseFolder('A')}/${COURSE_INFO_FILE}`])).toEqual(courses.courses[0]);
   });
 });

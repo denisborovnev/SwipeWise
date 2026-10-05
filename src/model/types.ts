@@ -24,6 +24,11 @@ export interface Course {
   /** Drive version of the spreadsheet after the last sync; unchanged = nothing to pull. */
   sheetVersion?: string;
   speech?: SpeechSettings;
+  /**
+   * Rebuilt from a folder without course.json because courses.json was lost: name and language are
+   * placeholders until they are read from the spreadsheet tagged with the course's id (if any).
+   */
+  recovered?: boolean;
 }
 
 /** Contents of courses.json. */

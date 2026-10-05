@@ -50,3 +50,28 @@ export function restorableCourses(spreadsheets: AppSpreadsheet[], courses: Cours
   }
   return result;
 }
+
+/**
+ * Name, language and spreadsheet of courses rebuilt after courses.json was lost, from the spreadsheets
+ * tagged with their ids. Every recovered course gets a patch (also without a spreadsheet, which clears the
+ * mark: there is nothing more to learn); names are made unique.
+ */
+export function recoveredCoursePatches(
+  courses: Course[],
+  spreadsheets: AppSpreadsheet[],
+): { courseId: string; patch: Pick<Course, 'recovered'> & Partial<Pick<Course, 'name' | 'language' | 'spreadsheetId'>> }[] {
+  const taken: { name: string }[] = courses.filter((c) => !c.recovered);
+  return courses
+    .filter((c) => c.recovered)
+    .map((course) => {
+      const spreadsheet = spreadsheets.find((s) => s.courseId === course.id);
+      if (!spreadsheet) {
+        taken.push(course);
+        return { courseId: course.id, patch: { recovered: undefined } };
+      }
+      const name = uniqueListName(courseNameFromTitle(spreadsheet.name), taken);
+      taken.push({ name });
+      const language = findLanguage(spreadsheet.language ?? null) ? spreadsheet.language! : course.language;
+      return { courseId: course.id, patch: { recovered: undefined, name, language, spreadsheetId: spreadsheet.id } };
+    });
+}

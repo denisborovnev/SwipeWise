@@ -30,12 +30,21 @@ export async function readJson<T>(backend: StorageBackend, name: string): Promis
   if (text === null) {
     return null;
   }
+  const parsed = parseJson<T>(text);
+  if (parsed !== null) {
+    return parsed;
+  }
+  // A corrupt file must not crash the app; keep a copy for diagnostics and use the previous version.
+  console.warn(`Could not parse ${name}, using its previous version`);
+  await backend.writeTextAtomic(`${name}.corrupt`, text);
+  const backup = await backend.readBackup(name);
+  return backup === null ? null : parseJson<T>(backup);
+}
+
+function parseJson<T>(text: string): T | null {
   try {
     return JSON.parse(text) as T;
-  } catch (e) {
-    // A corrupt file must not crash the app; keep a copy for diagnostics and start fresh.
-    console.warn(`Could not parse ${name}, ignoring it`, e);
-    await backend.writeTextAtomic(`${name}.corrupt`, text);
+  } catch {
     return null;
   }
 }

@@ -1,6 +1,6 @@
 import type { Course } from '@/model/types';
 
-import { courseNameFromTitle, restorableCourses } from '../restore';
+import { courseNameFromTitle, recoveredCoursePatches, restorableCourses } from '../restore';
 
 const NOW = '2026-10-05T10:00:00.000Z';
 const local: Course = { id: 'C1', name: 'English', language: 'en-GB', createdAt: NOW, spreadsheetId: 'S1' };
@@ -41,5 +41,20 @@ describe('restore', () => {
       NOW,
     );
     expect(result.map((r) => [r.spreadsheet.id, r.course.name])).toEqual([['S5', 'English (2)']]);
+  });
+
+  it('names recovered courses after their spreadsheets', () => {
+    const recovered = (id: string, name: string): Course => ({ id, name, language: null, createdAt: NOW, recovered: true });
+    const patches = recoveredCoursePatches(
+      [local, recovered('C2', 'Recovered course'), recovered('C3', 'Recovered course (2)')],
+      [
+        { id: 'S2', name: 'SwipeWise – English', courseId: 'C2', language: 'en-US' },
+        { id: 'S9', name: 'SwipeWise – Other', courseId: 'C9' },
+      ],
+    );
+    expect(patches).toEqual([
+      { courseId: 'C2', patch: { recovered: undefined, name: 'English (2)', language: 'en-US', spreadsheetId: 'S2' } },
+      { courseId: 'C3', patch: { recovered: undefined } }, // never connected: keeps its placeholder name
+    ]);
   });
 });

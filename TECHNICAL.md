@@ -233,7 +233,14 @@ favicon (SVG); open it in a browser and export with `renderPng(name, size)` to `
 to the current course (e.g. `adb shell am start -a android.intent.action.VIEW -d swipewise://dev-seed`).
 
 Local data is stored in the app's documents folder under `myvocabulary/`: `courses.json` (the courses and
-the current one) and a folder per course, `courses/<id>/`, with `words.json`, `sessions.json` and `settings.json`.
+the current one) and a folder per course, `courses/<id>/`, with `course.json` (a copy of the course's settings),
+`words.json`, `sessions.json` and `settings.json`.
+
+Files are saved so that a killed app never loses one (`src/storage/safeBackend.ts`): the new content goes to
+`name.tmp`, the current file is moved to `name.bak`, then `name.tmp` becomes `name`; reading falls back to `.tmp`
+and `.bak`, and a corrupt file to its `.bak`. (On Android, moving a file over another deletes the target first,
+so a plain "write temp + move" can lose the file.) If `courses.json` is still lost, the courses are rebuilt from
+the `course.json` files – or, for folders without one, from the spreadsheets tagged with the course ids.
 
 ## Manual test checklist
 
@@ -254,6 +261,8 @@ Before a release, on a phone or emulator:
 - [ ] **Courses:** two courses with different spreadsheets; switching syncs the other one; words never mix.
 - [ ] **Restore:** fresh install → Restore from Google Drive → sign in → the courses appear → Restore all → words of
   the first course are read; switching reads the others. A course already on the phone is not offered.
+- [ ] **Killed app:** open the app and kill it (swipe it away) right away, many times in a row → the courses,
+  words and session are still there.
 - [ ] **Errors:** sync while offline → error shown, retried later; sign out → red cloud; sign in again → syncs.
 - [ ] **Dark mode** and a small screen: all screens readable, nothing cut off.
 - [ ] **Release APK:** installs over the previous version; Google sign-in works (release SHA-1 registered).

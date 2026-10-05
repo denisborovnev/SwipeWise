@@ -13,7 +13,7 @@ without changing the rest of the app.
 | Framework | **Expo SDK 57 + TypeScript**. Milestones 1–4 run in **Expo Go**; from Milestone 5 a **development build** is used | Familiar React model; the dev build is only needed for native Google Sign-In. |
 | Navigation | **expo-router** (file-based) | Simple, React-Router-like. |
 | State | **Zustand** with a thin persistence layer | Minimal boilerplate, easy to persist to a file. |
-| Local storage | **JSON files via `expo-file-system`**, written atomically (write tmp → rename) | Matches "cache on file system"; data size is small (thousands of words). Can swap to `expo-sqlite` later behind the same repository interface. |
+| Local storage | **JSON files via `expo-file-system`**, written crash-safely (tmp → move the old file to .bak → move tmp in; reads fall back to .tmp / .bak) | Matches "cache on file system"; data size is small (thousands of words). Can swap to `expo-sqlite` later behind the same repository interface. |
 | Animations | **react-native-reanimated** + **react-native-gesture-handler** | 60fps flip + swipe on UI thread. |
 | Google auth | **`@react-native-google-signin/google-signin`** → access token | Native Android sign-in, no browser redirect juggling. |
 | Sheets access | **Sheets REST API v4** via `fetch` with the access token | No heavy Google SDK needed in RN. |
@@ -84,6 +84,7 @@ The actual types are in `src/model/types.ts`.
 Local files (in `<documents>/myvocabulary/`):
 - `courses.json` – the courses and the id of the current one
 - `courses/<courseId>/` – one folder per course:
+  - `course.json` – copy of the course's settings (name, language, spreadsheet, speech) to rebuild `courses.json` if it's lost
   - `words.json` – all lists + words of the course
   - `sessions.json` – the last 5 sessions, most recently used first (replaces `session.json` of earlier versions, which is migrated)
   - `sync-queue.json` – pending remote operations
@@ -297,11 +298,11 @@ Only the **current course** is synced (another course is synced when the user sw
 - Sessions and the "last used filter" aren't in the spreadsheet, so they start fresh.
 
 ### Bugs
-- [ ] **All courses lost after opening / closing the app many times** (reported 2026-10-05): the app suddenly showed the welcome screen. Probable cause: `fileBackend.writeTextAtomic` writes a temp file and then `move(target, { overwrite: true })`, which removes `courses.json` before moving the new file in – if Android kills the app between the two (swiping it away while the background sync saves `lastSyncAt`), `courses.json` is missing. `courseStore.load()` then treats it as a first launch and **saves an empty course list over it**. The same happens if the file is corrupt (`readJson` returns null). The course folders (`courses/<id>/words.json`) survive, so the words are still on the phone. Fix ideas:
-  - read the `.tmp` file (or a `.bak` copy kept on every write) when the target is missing or doesn't parse;
-  - never write an empty `courses.json` over a missing / corrupt one when `courses/` has folders – rebuild the list from them instead (name from the connected spreadsheet or "My course");
-  - fewer writes of `courses.json` (e.g. don't save `lastSyncAt` on every skipped sync);
-  - test: kill the app in a loop while it syncs.
+- [x] **All courses lost after opening / closing the app many times** (reported and fixed 2026-10-05, 1.2.0): the app suddenly showed the welcome screen. Cause: saving wrote a temp file and then `move(target, { overwrite: true })`, which in expo-file-system **deletes the target first** – if Android killed the app in between (the background sync saves `courses.json`), the file was gone. `courseStore.load()` then took it for a first launch and saved an empty course list over it (also for a corrupt file). The words in `courses/<id>/` survived. Fixed by:
+  - `safeBackend.ts`: write `name.tmp` → move `name` to `name.bak` → move `name.tmp` to `name`; reads fall back to `.tmp`, then `.bak`; a corrupt file falls back to its `.bak`; `delete` removes all three;
+  - `course.json` in every course folder (name, language, created, spreadsheet, speech), written when those change and on start if missing;
+  - a missing `courses.json` with course folders is never replaced by an empty list: the courses are rebuilt from their `course.json` (or, without one, marked `recovered` and named from the spreadsheet tagged with their id once signed in);
+  - tests simulate a kill after every step of a save; on the emulator the app was killed 25 times at random moments without losing anything.
 
 ---
 

@@ -16,7 +16,7 @@ import { mergePull } from '@/sync/mergePull';
 import { canSkipSync } from '@/sync/changes';
 import { markPushed, planSync } from '@/sync/planSync';
 import { readSpreadsheet } from '@/sync/pull';
-import { restorableCourses, type RestorableCourse } from '@/sync/restore';
+import { recoveredCoursePatches, restorableCourses, type RestorableCourse } from '@/sync/restore';
 import { spreadsheetTitle } from '@/sync/sheetFormat';
 
 import { createCourseStore, type CourseState } from './courseStore';
@@ -91,8 +91,36 @@ export async function loadAll() {
     await openActiveCourse();
   }
   // The cached words are shown right away; the spreadsheet is read in the background.
-  restoring.then(() => syncActiveCourse());
+  restoring.then(async () => {
+    await completeRecoveredCourses();
+    await syncActiveCourse();
+  });
 }
+
+/**
+ * Courses rebuilt from their folders after courses.json was lost get their name, language and spreadsheet
+ * back from Google Drive (needs a signed-in account; tried again on the next start / sign-in otherwise).
+ */
+async function completeRecoveredCourses() {
+  if (!courseStore.getState().courses.some((c) => c.recovered) || !googleAccountStore.getState().email) {
+    return;
+  }
+  try {
+    const spreadsheets = await googleApi.listAppSpreadsheets();
+    for (const { courseId, patch } of recoveredCoursePatches(courseStore.getState().courses, spreadsheets)) {
+      await courseStore.getState().updateCourse(courseId, patch);
+    }
+  } catch (e) {
+    console.warn('Could not complete the recovered courses', e);
+  }
+}
+
+// Signing in later also completes recovered courses. (Restoring the sign-in on start is handled by loadAll.)
+googleAccountStore.subscribe((state, prev) => {
+  if (state.email && !prev.email && prev.status === 'ready' && courseStore.getState().status === 'ready') {
+    completeRecoveredCourses().then(() => syncActiveCourse());
+  }
+});
 
 export async function switchCourse(courseId: string) {
   if (courseStore.getState().activeCourseId === courseId) {

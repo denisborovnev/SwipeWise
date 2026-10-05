@@ -1,11 +1,28 @@
-import type { CoursesData } from '@/model/types';
+import type { Course, CoursesData } from '@/model/types';
 
 import { scopeBackend, type StorageBackend } from './backend';
 import { createRepository, FILES, readJson, writeJson, type Repository } from './repository';
 
 export const COURSES_FILE = 'courses.json';
 
-export const courseFolder = (courseId: string) => `courses/${courseId}`;
+/** The settings of a course, also kept in its own folder so the course can be rebuilt from it. */
+export const COURSE_INFO_FILE = 'course.json';
+
+export type CourseInfo = Pick<Course, 'id' | 'name' | 'language' | 'createdAt' | 'spreadsheetId' | 'speech'>;
+
+/** The part of a course kept in course.json (not the sync state, which changes on every sync). */
+export const courseInfo = ({ id, name, language, createdAt, spreadsheetId, speech }: Course): CourseInfo => ({
+  id,
+  name,
+  language,
+  createdAt,
+  spreadsheetId,
+  speech,
+});
+
+const COURSES_FOLDER = 'courses';
+
+export const courseFolder = (courseId: string) => `${COURSES_FOLDER}/${courseId}`;
 
 /** Files that were kept directly in the data folder before courses existed. */
 const LEGACY_FILES = [FILES.vocabulary, FILES.sessions, FILES.legacySession, FILES.settings];
@@ -19,6 +36,10 @@ export interface CoursesRepository {
   /** Deletes the legacy files once courses.json pointing at their copies is saved. */
   deleteLegacyData(): Promise<void>;
   deleteCourseData(courseId: string): Promise<void>;
+  /** Ids of the courses that have a folder (to rebuild the list if courses.json is lost). */
+  listCourseFolders(): Promise<string[]>;
+  loadCourseInfo(courseId: string): Promise<CourseInfo | null>;
+  saveCourseInfo(info: CourseInfo): Promise<void>;
   /** Repository for the files of one course. */
   courseRepository(courseId: string): Repository;
 }
@@ -46,6 +67,9 @@ export function createCoursesRepository(backend: StorageBackend): CoursesReposit
     },
 
     deleteCourseData: (courseId) => backend.deleteFolder(courseFolder(courseId)),
+    listCourseFolders: () => backend.listFolders(COURSES_FOLDER),
+    loadCourseInfo: (courseId) => readJson<CourseInfo>(backend, `${courseFolder(courseId)}/${COURSE_INFO_FILE}`),
+    saveCourseInfo: (info) => writeJson(backend, `${courseFolder(info.id)}/${COURSE_INFO_FILE}`, info),
     courseRepository: (courseId) => createRepository(scopeBackend(backend, courseFolder(courseId))),
   };
 }
