@@ -153,7 +153,7 @@ export default function PlayScreen() {
           </View>
         ) : (
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            Recall the word, then tap the card.{'\n'}Swipe left for the next word, right for the previous one.
+            Recall the word, then tap the card.{'\n'}Swipe ‹ › to go to the previous / next word.
           </Text>
         )}
       </View>
