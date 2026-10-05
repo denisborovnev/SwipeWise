@@ -31,7 +31,10 @@ export interface SessionState {
   repeatMissed(): void;
   /** Makes a recent session the current one: unfinished ones continue, finished ones start again. */
   selectSession(sessionId: string): void;
+  /** Answers the current card (again, if the user went back to it) and moves to the next one. */
   answer(answer: Answer): void;
+  /** Moves to the previous / next card without answering; false if there is none (first / last card). */
+  browse(direction: -1 | 1): boolean;
   undo(): void;
   /** Same words, shuffled again, from the first card. */
   restart(): void;
@@ -161,6 +164,16 @@ export function createSessionStore({
         const previous = { lastRevisedAt: word.lastRevisedAt, remembered: word.remembered };
         vocabulary.getState().recordAnswer(wordId, answer);
         setSession(ses.answerCurrent(session, answer, previous, nowIso()));
+      },
+
+      browse(direction) {
+        const { session } = get();
+        const next = session && ses.browse(session, direction);
+        if (!session || !next || next === session) {
+          return false;
+        }
+        setSession(next);
+        return true;
       },
 
       undo() {

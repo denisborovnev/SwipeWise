@@ -35,12 +35,15 @@ export default function SummaryScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>
-          {stats.notRemembered === 0 && stats.answered > 0 ? 'Perfect! 🎉' : 'Session complete'}
+          {stats.notRemembered === 0 && stats.answered === stats.total ? 'Perfect! 🎉' : 'Session complete'}
         </Text>
 
         <View style={styles.stats}>
           <Stat label="Knew" value={stats.remembered} color={colors.success} />
           <Stat label="Didn't know" value={stats.notRemembered} color={colors.danger} />
+          {stats.answered < stats.total && (
+            <Stat label="Skipped" value={stats.total - stats.answered} color={colors.textSecondary} />
+          )}
         </View>
 
         {missed.length > 0 && (

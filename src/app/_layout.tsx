@@ -78,6 +78,7 @@ export default function RootLayout() {
           <Stack.Screen name="word" options={{ presentation: 'modal' }} />
           <Stack.Screen name="session/new" options={{ title: 'New session' }} />
           <Stack.Screen name="session/recent" options={{ title: 'Recent sessions' }} />
+          <Stack.Screen name="session/preview" options={{ title: 'Session' }} />
           <Stack.Screen name="session/play" options={{ title: '' }} />
           <Stack.Screen name="session/summary" options={{ title: 'Results', headerBackVisible: false }} />
         </Stack>

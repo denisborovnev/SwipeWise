@@ -56,6 +56,50 @@ describe('session', () => {
     expect(ses.currentWordId(s)).toBe('a');
   });
 
+  it('browses back and forward without answering, stopping at the first and last card', () => {
+    let s = start();
+    expect(ses.browse(s, -1)).toBe(s); // first card
+    s = ses.browse(s, 1); // skip a
+    s = ses.browse(s, 1); // skip b
+    expect(ses.currentWordId(s)).toBe('c');
+    expect(ses.browse(s, 1)).toBe(s); // last card
+    s = ses.browse(s, -1);
+    expect(ses.currentWordId(s)).toBe('b');
+    expect(s.history).toEqual([]);
+    expect(ses.isFinished(s)).toBe(false);
+  });
+
+  it('a skipped word stays unanswered; answering the last card finishes the session', () => {
+    let s = ses.browse(start(), 1); // skip a
+    s = ses.answerCurrent(s, 'yes', NEVER, T); // b
+    s = ses.answerCurrent(s, 'no', NEVER, T); // c
+    expect(ses.isFinished(s)).toBe(true);
+    expect(ses.answerOf(s, 'a')).toBeUndefined();
+    expect(ses.sessionStats(s)).toEqual({ total: 3, answered: 2, remembered: 1, notRemembered: 1 });
+  });
+
+  it('answering a word again replaces the earlier answer and keeps the state from before the session', () => {
+    const before = { lastRevisedAt: '2026-10-01T00:00:00.000Z', remembered: 'yes' as const };
+    let s = ses.answerCurrent(start(), 'no', before, T); // a: no
+    s = ses.browse(s, -1); // back to a
+    const afterFirstAnswer = { lastRevisedAt: T, remembered: 'no' as const };
+    s = ses.answerCurrent(s, 'yes', afterFirstAnswer, T); // a: yes
+    expect(ses.currentWordId(s)).toBe('b');
+    expect(s.history).toEqual([{ wordId: 'a', answer: 'yes', previous: before }]);
+    expect(ses.answerOf(s, 'a')).toBe('yes');
+    // Undo takes the answer back to the state before the session and shows the card again.
+    const undone = ses.undoLast(s)!;
+    expect(undone.step.previous).toEqual(before);
+    expect(ses.currentWordId(undone.session)).toBe('a');
+  });
+
+  it('undo shows the card of the last answer even if the user browsed elsewhere', () => {
+    let s = ses.answerCurrent(start(), 'yes', NEVER, T); // a, now on b
+    s = ses.browse(s, 1); // on c
+    s = ses.undoLast(s)!.session;
+    expect(ses.currentWordId(s)).toBe('a');
+  });
+
   it('returns null when there is nothing to undo', () => {
     expect(ses.undoLast(start())).toBeNull();
   });
@@ -106,9 +150,10 @@ describe('upsertRecent', () => {
 
   it('keeps at most MAX_RECENT_SESSIONS', () => {
     let recent: Session[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       recent = ses.upsertRecent(recent, make(`S${i}`, `L${i}`));
     }
-    expect(recent.map((s) => s.id)).toEqual(['S7', 'S6', 'S5', 'S4', 'S3']);
+    expect(recent).toHaveLength(ses.MAX_RECENT_SESSIONS);
+    expect(recent.map((s) => s.id)).toEqual(['S11', 'S10', 'S9', 'S8', 'S7', 'S6', 'S5', 'S4', 'S3', 'S2']);
   });
 });

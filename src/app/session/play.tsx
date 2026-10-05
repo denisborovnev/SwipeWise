@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { Button, IconButton } from '@/components/Button';
-import { FlashCard, type FlashCardHandle } from '@/components/FlashCard';
+import { type BrowseDirection, FlashCard, type FlashCardHandle } from '@/components/FlashCard';
 import { Spacing, useThemeColors } from '@/constants/theme';
-import { currentWordId, isFinished } from '@/model/session';
-import { SPEECH_RATES, speak, stopSpeaking } from '@/speech/pronounce';
+import { answerOf, currentWordId, isFinished } from '@/model/session';
+import { SPEECH_RATES, speak, stopSpeaking, useSpeechPhase } from '@/speech/pronounce';
 import { sessionStore, useCourses, useSession, useVocabulary } from '@/store';
 
 export default function PlayScreen() {
@@ -14,19 +14,24 @@ export default function PlayScreen() {
   const session = useSession((s) => s.session);
   const wordId = session ? currentWordId(session) : undefined;
   const word = useVocabulary((s) => (wordId ? s.data.words.find((w) => w.id === wordId) : undefined));
-  // Which card is flipped; keyed by card so it resets when the card changes (next card, undo, restart).
+  // Which card is flipped; keyed by card so it resets when the card changes (restart). Cleared when moving
+  // to another card, since browsing can come back to the same card (same key) showing its front again.
   const [flipped, setFlipped] = useState<{ cardKey: string; back: boolean } | null>(null);
+  // After browsing, the new card slides in from the other side.
+  const [enterFrom, setEnterFrom] = useState<BrowseDirection | undefined>(undefined);
   const cardRef = useRef<FlashCardHandle>(null);
   const course = useCourses((s) => s.courses.find((c) => c.id === s.activeCourseId));
   const language = course?.language ?? null;
   const rate = course?.speech?.rate ?? SPEECH_RATES.normal;
+  const speechKey = `card:${wordId}`;
+  const speechPhase = useSpeechPhase(speechKey);
 
   const finished = !session || isFinished(session);
   const wordMissing = !!wordId && !word;
 
   useEffect(() => {
     if (wordMissing) {
-      // The word was deleted after the session was created.
+      // The word was deleted after the session was created (or in the editor).
       sessionStore.getState().skipMissing();
     }
   }, [wordMissing]);
@@ -48,12 +53,34 @@ export default function PlayScreen() {
   const showingBack = flipped?.cardKey === cardKey && flipped.back;
   const total = session.wordIds.length;
   const canUndo = session.history.length > 0;
+  const say = () => language && speak(word.back, language, rate, speechKey);
 
   const confirmRestart = () =>
     Alert.alert('Restart session?', 'You will go over the same words again, in a new order.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Restart', onPress: () => sessionStore.getState().restart() },
     ]);
+
+  const answer = (value: 'yes' | 'no') => {
+    setFlipped(null);
+    setEnterFrom(undefined);
+    sessionStore.getState().answer(value);
+  };
+
+  const browse = (direction: BrowseDirection) => {
+    // Swiped right (next): the card left to the right, so the next one comes from the left – and vice versa.
+    setFlipped(null);
+    setEnterFrom(direction === 1 ? -1 : 1);
+    sessionStore.getState().browse(direction);
+  };
+
+  const undo = () => {
+    if (canUndo) {
+      setFlipped(null);
+      setEnterFrom(undefined);
+      sessionStore.getState().undo();
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: Spacing.md }]}>
@@ -66,7 +93,7 @@ export default function PlayScreen() {
                 icon="arrow-undo"
                 accessibilityLabel="Undo last answer"
                 color={canUndo ? colors.text : colors.border}
-                onPress={() => canUndo && sessionStore.getState().undo()}
+                onPress={undo}
               />
               <IconButton icon="refresh" accessibilityLabel="Restart session" onPress={confirmRestart} />
             </View>
@@ -74,11 +101,12 @@ export default function PlayScreen() {
         }}
       />
 
+      {/* Progress = answered cards (skipped ones don't count). */}
       <View style={[styles.progressTrack, { backgroundColor: colors.card }]}>
         <View
           style={[
             styles.progressBar,
-            { backgroundColor: colors.primary, width: `${(session.currentIndex / total) * 100}%` },
+            { backgroundColor: colors.primary, width: `${(session.history.length / total) * 100}%` },
           ]}
         />
       </View>
@@ -88,14 +116,20 @@ export default function PlayScreen() {
           key={cardKey}
           ref={cardRef}
           word={word}
+          enterFrom={enterFrom}
+          earlierAnswer={answerOf(session, word.id)}
+          canBrowse={{ previous: session.currentIndex > 0, next: session.currentIndex < total - 1 }}
+          onBrowse={browse}
+          onEdit={() => router.push({ pathname: '/word', params: { listId: word.listId, wordId: word.id } })}
           onFlip={(back) => {
             setFlipped({ cardKey, back });
-            if (back && language && course?.speech?.autoPlay) {
-              speak(word.back, language, rate);
+            if (back && course?.speech?.autoPlay) {
+              say();
             }
           }}
-          onSpeak={language ? () => speak(word.back, language, rate) : undefined}
-          onAnswer={(answer) => sessionStore.getState().answer(answer)}
+          onSpeak={language ? say : undefined}
+          speechPhase={speechPhase}
+          onAnswer={answer}
         />
       </View>
 
@@ -119,7 +153,7 @@ export default function PlayScreen() {
           </View>
         ) : (
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            Try to recall the word, then tap the card
+            Recall the word, then tap the card.{'\n'}Swipe ‹ › to go to the previous / next word.
           </Text>
         )}
       </View>

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useImperativeHandle, useState, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useState, type Ref } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -14,8 +14,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Spacing, useThemeColors } from '@/constants/theme';
 import type { Answer, Word } from '@/model/types';
+import type { SpeechState } from '@/speech/pronounce';
 
-/** Horizontal distance after which releasing the card counts as an answer. */
+import { SpeakIcon } from './SpeakIcon';
+
+/** Horizontal distance after which releasing the card counts as an answer (or, on the front, as browsing). */
 const SWIPE_THRESHOLD = 110;
 /** A fast flick counts even if the card didn't travel far. */
 const FLICK_VELOCITY = 900;
@@ -25,28 +28,62 @@ export interface FlashCardHandle {
   answer(answer: Answer): void;
 }
 
+/** -1 = previous card, 1 = next card. */
+export type BrowseDirection = -1 | 1;
+
 interface FlashCardProps {
   word: Word;
   onAnswer: (answer: Answer) => void;
   onFlip?: (showingBack: boolean) => void;
   /** Reads the word aloud; shows a 🔊 button on the back when set. */
   onSpeak?: () => void;
+  /** Phase of the speech started by the 🔊 button (a spinner until the voice starts). */
+  speechPhase?: SpeechState['phase'];
+  /** Shows a ✏️ button in the top-right corner. */
+  onEdit?: () => void;
+  /** Swiping the front side: left = previous card, right = next card, without answering. */
+  onBrowse?: (direction: BrowseDirection) => void;
+  /** Whether there is a previous / next card (otherwise the card bounces back). */
+  canBrowse?: { previous: boolean; next: boolean };
+  /** The answer given to this word earlier in the session (the user went back to it). */
+  earlierAnswer?: Answer;
+  /** The side the card slides in from when it appears (after browsing). */
+  enterFrom?: BrowseDirection;
   ref?: Ref<FlashCardHandle>;
 }
 
 /**
- * Tap to flip between front and back. Once the back is shown, swipe right = "I remembered it",
- * swipe left = "I didn't". Render with `key={word.id}` so every word starts on the front.
+ * Tap to flip between front and back. On the back, swipe right = "I remembered it", swipe left = "I didn't".
+ * On the front, swipe left / right goes to the previous / next card without answering.
+ * Render with a `key` per card so every card starts on the front.
  */
-export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardProps) {
+export function FlashCard({
+  word,
+  onAnswer,
+  onFlip,
+  onSpeak,
+  speechPhase = 'idle',
+  onEdit,
+  onBrowse,
+  canBrowse = { previous: false, next: false },
+  earlierAnswer,
+  enterFrom,
+  ref,
+}: FlashCardProps) {
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const [showingBack, setShowingBack] = useState(false);
-  const [answered, setAnswered] = useState(false);
+  // Answered or browsed away: the card is leaving and ignores further gestures.
+  const [leaving, setLeaving] = useState(false);
 
   const rotation = useSharedValue(0); // 0 = front, 180 = back
-  const translateX = useSharedValue(0);
+  const translateX = useSharedValue(enterFrom ? enterFrom * width : 0);
   const translateY = useSharedValue(0);
+
+  useEffect(() => {
+    // Slide in after browsing (no-op otherwise).
+    translateX.set(withTiming(0, { duration: 200 }));
+  }, [translateX]);
 
   const flip = () => {
     const next = !showingBack;
@@ -56,6 +93,8 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
   };
 
   const finish = (answer: Answer) => onAnswer(answer);
+  const browse = (direction: BrowseDirection) => onBrowse?.(direction);
+  const markLeaving = () => setLeaving(true);
 
   const flyOff = (answer: Answer) => {
     'worklet';
@@ -69,38 +108,59 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
     );
   };
 
+  /** Slides the card out to the side it was swiped to, then shows the previous / next card. */
+  const slideOff = (direction: BrowseDirection) => {
+    'worklet';
+    // Swipe right = next card, so the card leaves to the right.
+    translateX.set(
+      withTiming(direction * width * 1.2, { duration: 180 }, (done) => {
+        if (done) {
+          scheduleOnRN(browse, direction);
+        }
+      }),
+    );
+  };
+
   useImperativeHandle(ref, () => ({
     answer(answer: Answer) {
-      if (answered) {
+      if (leaving) {
         return;
       }
-      setAnswered(true);
+      setLeaving(true);
       flyOff(answer);
     },
   }));
 
-  const markAnswered = () => setAnswered(true);
+  const backSide = showingBack;
+  const { previous: hasPrevious, next: hasNext } = canBrowse;
 
   const pan = Gesture.Pan()
-    .enabled(showingBack && !answered)
+    .enabled(!leaving && (backSide || !!onBrowse))
     .activeOffsetX([-12, 12])
     .onUpdate((e) => {
       translateX.set(e.translationX);
-      translateY.set(e.translationY * 0.2);
+      translateY.set(backSide ? e.translationY * 0.2 : 0);
     })
     .onEnd((e) => {
       const goesRight = translateX.get() > SWIPE_THRESHOLD || e.velocityX > FLICK_VELOCITY;
       const goesLeft = translateX.get() < -SWIPE_THRESHOLD || e.velocityX < -FLICK_VELOCITY;
-      if (goesRight || goesLeft) {
-        scheduleOnRN(markAnswered);
+      if (backSide && (goesRight || goesLeft)) {
+        scheduleOnRN(markLeaving);
         flyOff(goesRight ? 'yes' : 'no');
+      } else if (!backSide && goesRight && hasNext) {
+        scheduleOnRN(markLeaving);
+        slideOff(1);
+      } else if (!backSide && goesLeft && hasPrevious) {
+        scheduleOnRN(markLeaving);
+        slideOff(-1);
       } else {
+        // Not far enough – or the first / last card: bounce back.
         translateX.set(withSpring(0));
         translateY.set(withSpring(0));
       }
     });
 
-  // The 🔊 button has its own tap; the card's tap waits for it to fail, so pressing 🔊 doesn't flip.
+  // The 🔊 and ✏️ buttons have their own taps; the card's tap waits for them to fail, so they don't flip it.
   const speakTap = Gesture.Tap()
     .enabled(showingBack && !!onSpeak)
     .maxDistance(10)
@@ -110,10 +170,19 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
       }
     });
 
+  const editTap = Gesture.Tap()
+    .enabled(!!onEdit && !leaving)
+    .maxDistance(10)
+    .onEnd(() => {
+      if (onEdit) {
+        scheduleOnRN(onEdit);
+      }
+    });
+
   const tap = Gesture.Tap()
-    .enabled(!answered)
-    .requireExternalGestureToFail(speakTap)
-    // A drag is not a tap (otherwise swiping the front side would flip the card).
+    .enabled(!leaving)
+    .requireExternalGestureToFail(speakTap, editTap)
+    // A drag is not a tap (otherwise swiping would flip the card).
     .maxDistance(10)
     .onEnd(() => {
       scheduleOnRN(flip);
@@ -123,7 +192,8 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
     transform: [
       { translateX: translateX.get() },
       { translateY: translateY.get() },
-      { rotateZ: `${translateX.get() / 25}deg` },
+      // Answer swipes (back side) tilt the card; browsing (front side) just slides it.
+      { rotateZ: `${rotation.get() >= 90 ? translateX.get() / 25 : 0}deg` },
     ],
   }));
 
@@ -136,6 +206,13 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
   const backStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 1200 }, { rotateY: `${rotation.get() - 180}deg` }],
     opacity: rotation.get() >= 90 ? 1 : 0,
+  }));
+
+  const nextHint = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.get(), [0, SWIPE_THRESHOLD], [0, 1], Extrapolation.CLAMP),
+  }));
+  const previousHint = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.get(), [-SWIPE_THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
   }));
 
   const rememberedOverlay = useAnimatedStyle(() => ({
@@ -151,7 +228,22 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
     <GestureDetector gesture={Gesture.Race(pan, tap)}>
       <Animated.View style={[styles.card, cardStyle]} accessibilityRole="button" accessibilityHint="Tap to flip">
         <Animated.View style={[face, frontStyle]} pointerEvents={showingBack ? 'none' : 'auto'}>
+          {earlierAnswer && (
+            <Text style={[styles.earlier, { color: earlierAnswer === 'yes' ? colors.success : colors.danger }]}>
+              {earlierAnswer === 'yes' ? '✓ Knew it' : '✗ Didn’t know'}
+            </Text>
+          )}
           <Text style={[styles.mainText, { color: colors.text }]}>{word.front}</Text>
+          {hasPrevious && (
+            <Animated.Text style={[styles.browseHint, styles.hintLeft, { color: colors.primary }, previousHint]}>
+              ‹ Previous
+            </Animated.Text>
+          )}
+          {hasNext && (
+            <Animated.Text style={[styles.browseHint, styles.hintRight, { color: colors.primary }, nextHint]}>
+              Next ›
+            </Animated.Text>
+          )}
         </Animated.View>
 
         <Animated.View style={[face, backStyle]} pointerEvents={showingBack ? 'auto' : 'none'}>
@@ -160,13 +252,13 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
           {onSpeak && (
             <GestureDetector gesture={speakTap}>
               <View
-                style={[styles.speak, { borderColor: colors.border }]}
+                style={[styles.speak, { borderColor: speechPhase === 'idle' ? colors.border : colors.primary }]}
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel={`Pronounce ${word.back}`}
                 accessibilityActions={[{ name: 'activate' }]}
                 onAccessibilityAction={() => onSpeak()}>
-                <Ionicons name="volume-high-outline" size={26} color={colors.primary} />
+                <SpeakIcon phase={speechPhase} size={26} />
               </View>
             </GestureDetector>
           )}
@@ -190,6 +282,20 @@ export function FlashCard({ word, onAnswer, onFlip, onSpeak, ref }: FlashCardPro
             <Text style={styles.overlayText}>Didn&apos;t know ✗</Text>
           </Animated.View>
         </Animated.View>
+
+        {onEdit && (
+          <GestureDetector gesture={editTap}>
+            <View
+              style={styles.edit}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${word.front}`}
+              accessibilityActions={[{ name: 'activate' }]}
+              onAccessibilityAction={() => onEdit()}>
+              <Ionicons name="create-outline" size={24} color={colors.textSecondary} />
+            </View>
+          </GestureDetector>
+        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -220,6 +326,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   example: { fontSize: 17, fontStyle: 'italic', textAlign: 'center' },
+  edit: { position: 'absolute', top: Spacing.sm, right: Spacing.sm, padding: Spacing.sm },
+  earlier: { position: 'absolute', top: Spacing.md, left: Spacing.lg, fontSize: 15, fontWeight: '600' },
+  browseHint: { position: 'absolute', bottom: Spacing.lg, fontSize: 17, fontWeight: '600' },
+  hintLeft: { left: Spacing.lg },
+  hintRight: { right: Spacing.lg },
   overlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

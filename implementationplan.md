@@ -297,16 +297,15 @@ Only the **current course** is synced (another course is synced when the user sw
 - [x] Restoring adds the courses connected to their spreadsheets and opens the first one, which pulls its words; the others are pulled when the user switches to them. The course keeps its old id, so files left on the phone for it (see the bug below) are used again.
 - Sessions and the "last used filter" aren't in the spreadsheet, so they start fresh.
 
-### Milestone 9 – Session comfort (ideas)
-- [ ] **10 recent sessions** instead of 5 (`MAX_RECENT_SESSIONS` in `src/model/session.ts`; also the texts in TECHNICAL.md / README that say "last 5").
-- [ ] **Preview a recent session**: tapping a session in *Recent sessions* opens a preview of its words (front – back, in the session's order, answered ones marked) with **Continue** (or **Start again** if it's finished) and **Back** to the list. Lets the user check it's the session they want before continuing it.
-- [ ] **Browse cards by swiping the front side**: while a card shows its front (before it's flipped), swiping moves between words without answering – **swipe left → previous word**, **swipe right → next word**. Nothing is recorded for the word being left (no `lastRevisedAt`, no `remembered`, no change to the session's answers). Use case: after answering a word the next front appears, and the user wants to look at the previous word again. Swipes on the **back** side keep their meaning (left = didn't know, right = knew it).
-  - Needs a distinct animation for "browse" vs "answer" swipes (e.g. no green / red tint, card slides instead of flying away), and a hint the first time.
-  - **Skipped words** (swipe right on the front) are just skipped: they stay unanswered and don't come back at the end of the session.
-  - **Going back to an answered word**: the card can be flipped and answered again as usual; the new answer replaces the earlier one (the word's `lastRevisedAt` / `remembered` and the session's answer are updated).
-  - **First card**: swipe left does nothing (the card bounces back); likewise swipe right on the last card.
-- [ ] **Feedback on the 🔊 button**: the phone's text-to-speech can take a few seconds to start, so it isn't clear the tap worked. Show it right away – e.g. a spinner / pulsing ring around the icon from the tap until speech starts (`expo-speech` `onStart`), then an "is speaking" state until `onDone` / `onStopped` / `onError`. Same on the card and in word lists.
-- [ ] **Edit the card during a session**: a ✏️ button in the top-right corner of the card (with its own tap gesture, like 🔊) opens the existing word editor (`word.tsx`, with `listId` + `wordId`) for that word; after saving, the card shows the new text and the change is synced like any edit. The answer, progress and the card's position in the session stay as they were.
+### Milestone 9 – Session comfort ✅
+- [x] **10 recent sessions** instead of 5 (`MAX_RECENT_SESSIONS`).
+- [x] **Preview a recent session** (`session/preview.tsx`): tapping a session in *Recent sessions* shows its words in the session's order (✓ / ✗ for answered ones, NEXT for the current card) with **Continue** / **Start again** and **Back**; the ▶ button on the row still continues right away. Continuing from the preview goes `dismissTo('/')` + push, so Back from the session returns home.
+- [x] **Browse cards by swiping the front side**: left = previous card, right = next card; nothing is recorded for the card being left (`browse()` in `model/session.ts` only moves `currentIndex`). The card slides (no tilt, no green / red) with "‹ Previous" / "Next ›" hints, and bounces back on the first / last card. The play screen's hint text explains it.
+  - Skipped words stay unanswered and don't come back; the results show them as **Skipped** (and "Perfect!" only when every card was answered with "knew it").
+  - A card answered earlier shows "✓ Knew it" / "✗ Didn't know" on its front; answering it again **replaces** the answer (`answerCurrent` drops the earlier step and keeps its `previous` review state, so Undo still restores the state from before the session).
+  - Undo goes to the card of the last answer (wherever the user browsed to). The progress bar shows answered cards; the title the card's position.
+- [x] **Feedback on the 🔊 button**: `speak()` tracks a phase per button key in `speechStore` (`starting` from the tap until expo-speech's `onStart`, then `speaking` until `onDone` / `onStopped` / `onError`; gives up after 15 s if the engine never reports). `SpeakIcon` shows a spinner over a faded icon while starting and a filled icon while speaking – on the card and in word lists.
+- [x] **Edit the card during a session**: ✏️ in the card's top-right corner (own tap gesture, like 🔊) opens `word.tsx` for the word; the card shows the new text and stays flipped / in place.
 
 ### Milestone 10 – Copy text from cards
 Separate from Milestone 9 because it may interfere with swiping cards.
@@ -326,6 +325,7 @@ Separate from Milestone 9 because it may interfere with swiping cards.
   - **Why tests didn't catch it:** the in-memory `FileOps` in `safeBackend.test.ts` is synchronous, like the (wrong) interface. The emulator kill test only checked that data survived, and the Metro log was searched for other messages.
   - **Also in older versions:** `tmp.move(target, { overwrite: true })` was never awaited either (since Milestone 1); it worked only because a single move with `overwrite` doesn't conflict.
   - **Fix (to do):** use `moveSync()` (or make `FileOps.move` return a Promise and `await` every move in `safeBackend`); make the test `FileOps` asynchronous so a missing `await` fails the tests; check `File.delete()` / `write()` / `create()` are synchronous in this version; on start, tidy up leftovers (`name` missing but `name.tmp` present → move it into place).
+- [ ] **Sync fails while a course has an empty list** (found 2026-10-05): *"Invalid requests[0].addSheet: … закрепить …"* (Sheets refuses the frozen header). `planSync` (and `connectCourse` when creating the spreadsheet) creates a tab with `rowCount = words + 1` and `frozenRowCount: 1` – for an empty list that's 1 row, and Sheets doesn't allow freezing *all* rows of a tab. The whole batchUpdate is rejected, so **nothing syncs** (red cloud) until the list gets a word or is deleted. Fix: at least 2 rows for new tabs (`Math.max(words.length + 1, 2)`), in both places; test with an empty list.
 - Note (not a bug in the app): on the emulator, restoring the Google sign-in on start sometimes fails with `ApiException: INTERNAL_ERROR` right after the emulator boots (probably Play services not ready yet – not investigated); the app then shows the course as not signed in until the next start or sign-in.
 
 ---

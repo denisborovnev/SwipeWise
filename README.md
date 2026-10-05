@@ -30,6 +30,9 @@ Your words can live in a Google Spreadsheet that you can also edit on your compu
 3. The back shows the word and, if you added them, **example sentences**.
 4. **Swipe right** if you knew it, **swipe left** if you didn't (or use the buttons).
 
+Want another look at the previous word? Swipe the card's front side left to go back (right skips to the next
+one). A typo on a card? Tap ✏️ and fix it without leaving the session.
+
 SwipeWise remembers when you last practised each word and whether you knew it, so you can focus on the
 words you keep forgetting.
 
@@ -49,7 +52,7 @@ words you keep forgetting.
   - only words you **didn't remember** last time.
 - **Every session in a new order** – words are shuffled each time you start or restart.
 - **Pick up where you left off** – the app opens with your last session and the card you stopped at.
-  **Restart** goes through the same words again; **Recent** brings back any of your last 5 sessions.
+  **Restart** goes through the same words again; **Recent** brings back any of your last 10 sessions – tap one to see its words first.
 - **Results** – after a session you see what you knew and can repeat just the words you missed.
 - **Works offline** – everything is stored on your phone; no account is needed.
 - **Google Sheets** – connect a course to a spreadsheet in your Google Drive. Add or fix

@@ -9,7 +9,10 @@ import { sessionStore, useSession, useVocabulary } from '@/store';
 import { describeProgress, describeSession } from '@/utils/describeFilter';
 import { formatDateTime } from '@/utils/format';
 
-/** The last few sessions; picking one continues it (or starts it again when it was finished). */
+/**
+ * The last few sessions: tapping one shows its words first (to check it's the right one); the button on the
+ * right continues it right away (or starts it again when it was finished).
+ */
 export default function RecentSessionsScreen() {
   const colors = useThemeColors();
   const recent = useSession((s) => s.recent);
@@ -27,16 +30,32 @@ export default function RecentSessionsScreen() {
       keyExtractor={(s) => s.id}
       ListHeaderComponent={
         <Text style={{ color: colors.textSecondary }}>
-          Your last {MAX_RECENT_SESSIONS} sessions. Unfinished ones continue where you stopped, finished ones start
-          again in a new order.
+          Your last {MAX_RECENT_SESSIONS} sessions. Tap one to see its words. Unfinished ones continue where you
+          stopped, finished ones start again in a new order.
         </Text>
       }
-      renderItem={({ item, index }) => <RecentRow session={item} current={index === 0} onPress={() => open(item)} />}
+      renderItem={({ item, index }) => (
+        <RecentRow
+          session={item}
+          current={index === 0}
+          onPress={() => router.push({ pathname: '/session/preview', params: { id: item.id } })}
+          onOpen={() => open(item)}
+        />
+      )}
     />
   );
 }
 
-function RecentRow({ session, current, onPress }: { session: Session; current: boolean; onPress: () => void }) {
+interface RecentRowProps {
+  session: Session;
+  current: boolean;
+  /** Shows the session's words. */
+  onPress: () => void;
+  /** Continues / starts it again right away. */
+  onOpen: () => void;
+}
+
+function RecentRow({ session, current, onPress, onOpen }: RecentRowProps) {
   const colors = useThemeColors();
   const lists = useVocabulary((s) => s.data.lists);
   const finished = isFinished(session);
@@ -52,10 +71,14 @@ function RecentRow({ session, current, onPress }: { session: Session; current: b
         <Text style={{ color: colors.textSecondary }}>{describeProgress(session)}</Text>
         <Text style={[styles.date, { color: colors.textSecondary }]}>Started {formatDateTime(session.startedAt)}</Text>
       </View>
-      <View style={styles.action}>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={onOpen}
+        style={({ pressed }) => [styles.action, { opacity: pressed ? 0.5 : 1 }]}>
         <Ionicons name={finished ? 'repeat' : 'play'} size={22} color={colors.primary} />
         <Text style={[styles.actionLabel, { color: colors.primary }]}>{finished ? 'Again' : 'Continue'}</Text>
-      </View>
+      </Pressable>
     </Pressable>
   );
 }

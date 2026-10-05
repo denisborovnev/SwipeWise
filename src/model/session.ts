@@ -23,26 +23,51 @@ export function currentWordId(session: Session): string | undefined {
   return session.wordIds[session.currentIndex];
 }
 
+/** The answer given to a word in this session, if it was answered. */
+export function answerOf(session: Session, wordId: string): Answer | undefined {
+  return session.history.find((s) => s.wordId === wordId)?.answer;
+}
+
+/**
+ * Answers the current card and moves to the next one. A word answered before (the user went back to it)
+ * gets the new answer instead; its `previous` stays the review state from before the session touched it.
+ */
 export function answerCurrent(session: Session, answer: Answer, previous: ReviewState, now: string): Session {
   const wordId = currentWordId(session);
   if (wordId === undefined) {
     return session;
   }
+  const earlier = session.history.find((s) => s.wordId === wordId);
   const next: Session = {
     ...session,
     currentIndex: session.currentIndex + 1,
-    history: [...session.history, { wordId, answer, previous }],
+    history: [
+      ...session.history.filter((s) => s.wordId !== wordId),
+      { wordId, answer, previous: earlier?.previous ?? previous },
+    ],
   };
   return isFinished(next) ? { ...next, finishedAt: now } : next;
 }
 
-/** Steps back one card. Returns the undone step so the caller can restore the word's review values. */
+/**
+ * Moves to the previous (-1) or next (+1) card without answering the current one. Returns the same
+ * session when there is no card in that direction (first / last card).
+ */
+export function browse(session: Session, direction: -1 | 1): Session {
+  const index = session.currentIndex + direction;
+  if (isFinished(session) || index < 0 || index >= session.wordIds.length) {
+    return session;
+  }
+  return { ...session, currentIndex: index };
+}
+
+/** Takes back the last answer and shows that card again. Returns the undone step so the caller can restore the word's review values. */
 export function undoLast(session: Session) {
   const step = session.history.at(-1);
   if (!step) {
     return null;
   }
-  const index = session.wordIds.lastIndexOf(step.wordId, session.currentIndex - 1);
+  const index = session.wordIds.indexOf(step.wordId);
   const next: Session = {
     ...session,
     currentIndex: index >= 0 ? index : Math.max(0, session.currentIndex - 1),
@@ -65,7 +90,7 @@ export function restartSession(session: Session, now: string, random: () => numb
 }
 
 /** How many recent sessions are kept. */
-export const MAX_RECENT_SESSIONS = 5;
+export const MAX_RECENT_SESSIONS = 10;
 
 /** Sessions with the same key are "the same session" in the recent list (same filter and kind). */
 export function sessionKey(session: Session): string {

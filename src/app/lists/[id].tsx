@@ -4,11 +4,12 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native
 
 import { Button, IconButton } from '@/components/Button';
 import { Footer } from '@/components/Footer';
+import { SpeakIcon } from '@/components/SpeakIcon';
 import { TextPromptModal } from '@/components/TextPromptModal';
 import { Spacing, useThemeColors } from '@/constants/theme';
 import type { Word } from '@/model/types';
 import { validateListName } from '@/model/validation';
-import { SPEECH_RATES, speak } from '@/speech/pronounce';
+import { SPEECH_RATES, speak, useSpeechPhase } from '@/speech/pronounce';
 import { sessionStore, useCourses, useVocabulary, vocabularyStore } from '@/store';
 import { plural } from '@/utils/format';
 
@@ -96,7 +97,7 @@ export default function ListScreen() {
           <WordRow
             word={item}
             onPress={() => openWord(item.id)}
-            onSpeak={language ? () => speak(item.back, language, rate) : undefined}
+            onSpeak={language ? () => speak(item.back, language, rate, speakKey(item)) : undefined}
           />
         )}
       />
@@ -137,14 +138,23 @@ function WordRow({ word, onPress, onSpeak }: { word: Word; onPress: () => void; 
       {word.examples.length > 0 && (
         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{plural(word.examples.length, 'example')}</Text>
       )}
-      {onSpeak && (
-        <IconButton
-          icon="volume-medium-outline"
-          accessibilityLabel={`Pronounce ${word.back}`}
-          color={colors.primary}
-          onPress={onSpeak}
-        />
-      )}
+      {onSpeak && <SpeakButton word={word} onPress={onSpeak} />}
+    </Pressable>
+  );
+}
+
+const speakKey = (word: Word) => `list:${word.id}`;
+
+function SpeakButton({ word, onPress }: { word: Word; onPress: () => void }) {
+  const phase = useSpeechPhase(speakKey(word));
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Pronounce ${word.back}`}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+      <SpeakIcon phase={phase} size={22} />
     </Pressable>
   );
 }

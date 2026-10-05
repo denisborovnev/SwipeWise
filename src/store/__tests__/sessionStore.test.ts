@@ -79,6 +79,21 @@ describe('sessionStore', () => {
     expect(sessions.getState().session?.currentIndex).toBe(0);
   });
 
+  it('browsing records nothing; answering a word again replaces its answer and undo restores the original', async () => {
+    const { sessions, listId, ids, word } = await setup();
+    sessions.getState().startSession({ listIds: [listId] });
+    expect(sessions.getState().browse(-1)).toBe(false); // first card
+    expect(sessions.getState().browse(1)).toBe(true); // skip a
+    expect(word(ids[0])).toMatchObject({ remembered: null, lastRevisedAt: null });
+    sessions.getState().answer('no'); // b
+    sessions.getState().browse(-1); // back to b
+    sessions.getState().answer('yes');
+    expect(word(ids[1])).toMatchObject({ remembered: 'yes' });
+    expect(sessions.getState().session?.history).toHaveLength(1);
+    sessions.getState().undo();
+    expect(word(ids[1])).toMatchObject({ remembered: null, lastRevisedAt: null });
+  });
+
   it('keeps the frozen word list, and restart repeats the same words', async () => {
     const { sessions, listId, ids } = await setup();
     sessions.getState().startSession({ listIds: [listId], onlyNotRemembered: false });
@@ -136,14 +151,14 @@ describe('sessionStore', () => {
       expect(sessions.getState().session).toBe(sessions.getState().recent[0]);
     });
 
-    it('keeps at most 5 sessions', async () => {
+    it('keeps at most 10 sessions', async () => {
       const { sessions } = await setup();
-      for (let days = 0; days < 7; days++) {
+      for (let days = 0; days < 12; days++) {
         sessions.getState().startSession({ listIds: [], addedSince: { days: days + 100 } });
       }
       const recent = sessions.getState().recent;
-      expect(recent).toHaveLength(5);
-      expect(recent[0].filter.addedSince).toEqual({ days: 106 });
+      expect(recent).toHaveLength(10);
+      expect(recent[0].filter.addedSince).toEqual({ days: 111 });
     });
 
     it('selecting an unfinished session continues it where it stopped', async () => {

@@ -28,6 +28,12 @@ Each word is a two-sided card:
    - **Swipe left** – "I didn't remember it"
 5. The word's *last revised* time and *remembered* flag are updated, and the next card appears.
 
+While the **front** is shown, swiping moves between cards without answering: **swipe left** = previous card,
+**swipe right** = next card (nothing is recorded for the card you leave; on the first / last card it bounces
+back). A skipped card stays unanswered and counts as *skipped* in the results. Going back to a card answered
+earlier shows its answer on the front; flipping and answering it again replaces that answer. ✏️ in the
+card's corner opens the word editor; the card shows the change and stays where it is in the session.
+
 ---
 
 ## Features
@@ -49,6 +55,8 @@ Each word is a two-sided card:
 ### Pronunciation
 - 🔊 on the back of a card and next to every word in a list reads the word (the back) aloud with the phone's
   text-to-speech, in the course's language (`en-GB`, `es-ES`, …). Text in parentheses is skipped.
+  The engine can take a few seconds to start, so the button shows a spinner until the voice starts and a
+  filled icon while it speaks.
 - Course screen → **Pronunciation**: read the word automatically when a card is flipped, speed (slow / normal),
   test the voice. If the phone has no voice for the language, the app explains how to install one and opens
   Android's text-to-speech settings.
@@ -81,7 +89,9 @@ Filters can be combined. The resulting list of words is **frozen** for the sessi
   have changed since then.
 - A **Restart session** button goes over the same set of words again from the first card, in a new order.
 - The word set is only recalculated when you explicitly **start a new session** with new filters.
-- **Recent sessions:** the last 5 sessions are kept. Pick any of them to continue it where you stopped
+- **Recent sessions:** the last 10 sessions are kept. Tap one to see its words first (in the session's order,
+  answered ones marked) and then **Continue** / **Start again** or go **Back**; the ▶ button on the right
+  continues it right away. Pick any of them to continue it where you stopped
   (or, if it was finished, to go over it again). Starting a session with the same filters as a recent
   one replaces it, so the list doesn't fill up with duplicates.
 
